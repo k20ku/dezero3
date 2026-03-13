@@ -10,6 +10,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "devtools>=0.12.2",
     "ipython>=9.9.0",
     "pytest>=9.0.2",
 ]

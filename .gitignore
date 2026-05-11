@@ -14,3 +14,6 @@ deep-learning-from-scratch-3/
 
 # temp directory
 temp/
+
+# cache
+.mypy_cache/

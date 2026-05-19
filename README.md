@@ -2,16 +2,30 @@
 
 ## venv
 
-If `venv` is not activated, run
+**Developers shuold make `venv` activated**.
 
 ```bash
 source .venv/bin/activate
 ```
 
-## script exection
+## run
 
 ```bash
-uv run ipython -m steps.stepXX
+uv run main.py
+```
+
+## tests
+
+To test all
+
+```bash
+pytest
+```
+
+To test specified class or functions
+
+```bash
+pytest tests/core_test.py::TestSquare
 ```
 
 ## repl
@@ -22,14 +36,14 @@ uv run ipython
 
 Responsive to file changes
 
-```ipython
+```python
 %load_ext autoreload
 %autoreload 2
 ```
 
 For each step, run below on the repl.
 
-```ipython
-# e.g. step01.py
-%run steps/stepXX.py
+```python
+# e.g. main.py
+%run main.py
 ```

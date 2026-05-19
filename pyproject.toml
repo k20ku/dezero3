@@ -1,16 +1,27 @@
 [project]
 name = "dezero3"
 version = "0.1.0"
-description = "Deep Learning from Scratch 3 (O'Reilly Japan, Koki Satito)"
+description = "Running along with Deep Learning from Scratch 3 (O'Reilly Japan, Koki Satito)"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = [
-    "numpy>=2.4.1",
-]
+dependencies = ["numpy>=2.4.1"]
 
 [dependency-groups]
 dev = [
     "devtools>=0.12.2",
     "ipython>=9.9.0",
+    "mypy>=2.1.0",
     "pytest>=9.0.2",
+    "ruff>=0.15.12",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+# https://docs.pytest.org/en/latest/explanation/goodpractices.html#choosing-a-test-layout
+addopts = ["--import-mode=importlib"]
+
+[tool.mypy]
+# https://dev.to/zim95/chapter-3-using-pytest-mypy-and-flake8-for-testing-30cl
+mypy_path = "src"
+ignore_missing_imports = true

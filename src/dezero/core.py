@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+from typing import Any, Protocol
+
 import numpy as np
-from typing import Protocol, Any
+
+array_types = np.ndarray
 
 
 # Helper
-def as_array(x) -> np.ndarray:
-    if isinstance(x, np.ndarray):
+def as_array(x) -> array_types:
+    if isinstance(x, array_types):
         return x
     if np.isscalar(x):
         return np.array(x)
-    raise TypeError(f'{type(x)} is not allowed for Variable')
+    raise TypeError(f"{type(x)} is not allowed for Variable")
 
 
 def to_str(obj) -> str:
@@ -28,9 +31,9 @@ class Variable:
     def __init__(self, data: Any):
         self.data = as_array(data)
         self.grad: np.ndarray | None = None
-        self.creator: 'Function' | None = None
+        self.creator: "Function" | None = None
 
-    def set_creater(self, func: 'Function' | None):
+    def set_creater(self, func: "Function" | None):
         self.creator = func
 
     def backward(self):
@@ -57,7 +60,6 @@ class Variable:
 
 # Abstract Function
 class Function(Protocol):
-
     input: Variable
     output: Variable
 
@@ -70,18 +72,15 @@ class Function(Protocol):
 
         self.input = input  # memorize input variable
         self.output = output  # momorize output variable
-        print(self)
         return output
 
-    def forward(self, x) -> Any:
-        ...
+    def forward(self, x) -> Any: ...
 
-    def backward(self, gy) -> Any:
-        ...
+    def backward(self, gy) -> Any: ...
 
     def _backward_safely(self, gy) -> np.ndarray:
         if gy is None:
-            raise TypeError('gradient must not be None.')
+            raise TypeError("gradient must not be None.")
         gx = self.backward(gy)
         gx = as_array(gx)
 
@@ -91,10 +90,16 @@ class Function(Protocol):
         return to_str(self)
 
 
+def as_variable(obj: Any) -> Variable:
+    if isinstance(obj, Variable):
+        return obj
+    return Variable(obj)
+
+
 # Concrete Functions
 class Square(Function):
     def forward(self, x):
-        y = x ** 2
+        y = x**2
         return y
 
     def backward(self, gy):

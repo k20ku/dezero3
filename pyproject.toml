@@ -1,19 +1,32 @@
 [project]
-name = "dezero3"
+name = "dezero3-k20ku"
 version = "0.1.0"
 description = "Running along with Deep Learning from Scratch 3 (O'Reilly Japan, Koki Satito)"
 readme = "README.md"
+authors = [{ name = "k20ku" }]
+license = "MIT"
 requires-python = ">=3.12"
-dependencies = ["numpy>=2.4.1"]
+dependencies = ["numpy>=2.0, <3.0"]
+
+[project.urls]
+Repository = "https://github.com/k20ku/dezero3"
 
 [dependency-groups]
 dev = [
-    "devtools>=0.12.2",
-    "ipython>=9.9.0",
-    "mypy>=2.1.0",
-    "pytest>=9.0.2",
-    "ruff>=0.15.12",
+    "devtools>=0.12",
+    "ipython>=9.8",
+    "mypy>=2.1",
+    "pytest>=9.0",
+    "ruff>=0.15",
 ]
+
+[build-system]
+requires = ["uv_build >= 0.11.7, <0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "dezero"
+module-root = "src"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

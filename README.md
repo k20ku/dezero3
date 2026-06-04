@@ -7,13 +7,19 @@ Deep Learning Framework repository based on "Deep Learning from Scratch 3" by �
 - 型ヒント・プロジェクト構成・テスト環境を整備しながら、自動微分エンジンの内部構造を理解することを目的としている。
 - 現在は Function Evaluation 周辺まで実装済みで、計算グラフと逆伝播の基盤部分を構築中。
 
-
 ## Developer Notices
 
 - **Developers shuold make `venv` activated**.
 
 ```bash
+uv venv
 source .venv/bin/activate
+```
+
+- Setting Up dependencies
+
+```bash
+uv sync
 ```
 
 ## Run Dezero
@@ -22,7 +28,13 @@ source .venv/bin/activate
 uv run main.py
 ```
 
-### Use with IPython REPL
+### Run in Colab
+
+![Dezero used from Colab](./resources/colab_example.webp)
+
+### Run in IPython REPL
+
+![Dezero used from REPL](./resources/REPL_example.webp)
 
 ```bash
 uv run ipython
@@ -43,7 +55,7 @@ You can run specific script file (i.e. `main.py`) on the REPL.
 
 ### Tests Dezero
 
-To run all test, 
+To run all test,
 
 ```bash
 pytest
@@ -70,8 +82,6 @@ pytest tests/core_test.py::TestSquare
 - Automatic Differentiation
 
 といった基盤技術に興味があり、その理解を目的として実装している。
-
----
 
 ## Development Process
 
@@ -144,7 +154,7 @@ def rosenbrock(x0, x1):
 
 ## Learnings
 
-### Reference and Pointer
+### 1. Reference and Pointer
 
 計算グラフでは参照やポインタをいかに効率よく安全に扱うかが重要
 
@@ -158,7 +168,7 @@ def rosenbrock(x0, x1):
 
 といったオブジェクト構造を意識しながら実装している。
 
-### Auto-Grad (自動微分) and Numerical Diff (数値微分)
+### 2. Auto-Grad (自動微分) and Numerical Diff (数値微分)
 
 数値微分は正しさの検証には便利だが、大規模なニューラルネットワークでは現実的な速度で動作させるのは困難。
 
@@ -166,7 +176,7 @@ def rosenbrock(x0, x1):
 
 その際，数値微分もkoki氏の数値微分を最適化したコードを参考にしている．加えて型付けと細かい変更を加えている．これからも修正予定である．
 
-### Respect to Chainer, PyTorch, Tensorflow
+### 3. Respect to Chainer, PyTorch, Tensorflow
 
 実装を追う中で、DeZero の多くの設計が Chainer の影響を受けていることを知った。
 

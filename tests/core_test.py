@@ -128,4 +128,4 @@ def test_forward(args, func, fwants, bwants):
     y.backward()
 
     for x, bwant in zip(xs, bwants):
-        np.testing.assert_allclose(x.data, bwants)
+        np.testing.assert_allclose(x.data, bwant)

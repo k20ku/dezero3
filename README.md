@@ -119,8 +119,10 @@ pytest tests/core_test.py::TestSquare
 このリポジトリでは型ヒントを積極的に導入している。
 ただし、すべてを厳密に型付けするのではなく、
 
-- 内部実装は厳密に
+- 内部実装は基本的に厳密に
+- 本質的に密結合な `Function` と `Variable` は動的に
 - 利用者向け API は柔軟に
+- 境界は厳格に
 
 という方針を採っている。
 
@@ -151,6 +153,24 @@ def rosenbrock(x0, x1):
         - パラメータ化テストが容易
         - テストの追加がしやすい
         - テストケース数が増えても管理しやすい
+
+### 3. 動的型と静的型ヒントの区別
+
+```python
+type NDArray = np.ndarray
+
+ndarray = np.ndarray
+```
+
+np.ndarrayをいちいち書くのはめんどくさい（将来的な`cupy`対応をする）ため，型エイリアスと動的な型は一か所に置いてあるがそれぞれ定義している
+
+```python
+isinstance(x, ndarray)
+```
+
+```python
+def f() -> NDArray:...
+```
 
 ## Learnings
 

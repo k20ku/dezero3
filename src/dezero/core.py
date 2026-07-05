@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, Protocol
+from abc import ABC, abstractmethod
+from typing import Any, Generator
 
 import numpy as np
 
-array_types = np.ndarray
+type NDArray = np.ndarray
+
+ndarray = np.ndarray
 
 
 # Helper
-def as_array(x) -> array_types:
-    if isinstance(x, array_types):
+def as_array(x) -> NDArray:
+    if isinstance(x, ndarray):
         return x
     if np.isscalar(x):
         return np.array(x)
@@ -30,13 +33,15 @@ def to_str(obj) -> str:
 class Variable:
     def __init__(self, data: Any):
         self.data = as_array(data)
-        self.grad: np.ndarray | None = None
+        self.grad: NDArray | None = None
         self.creator: "Function" | None = None
 
     def set_creater(self, func: "Function" | None):
         self.creator = func
 
     def backward(self):
+        # Complexity should exist somewhere. Choose where.
+        # Hence, choose here.
         if self.grad is None:
             self.grad = np.ones_like(self.data)
         # graph contains only one Variable node
@@ -47,38 +52,57 @@ class Variable:
         while funcs:
             f = funcs.pop()
 
-            x, y = f.input, f.output
-            x.grad = f._backward_safely(y.grad)
-
-            if x.creator is not None:
-                # funcs never contains None!
-                funcs.append(x.creator)
+            gys = (output.grad for output in f.outputs)
+            gxs = f.backward(*gys)
+            if not isinstance(gxs, tuple):
+                gxs = (gxs,)
+            for x, gx in zip(f.inputs, gxs):
+                x.grad = gx
+                if x.creator is not None:
+                    # funcs never contains None!
+                    funcs.append(x.creator)
 
     def __str__(self):
         return to_str(self)
 
 
 # Abstract Function
-class Function(Protocol):
-    input: Variable
-    output: Variable
+class Function(ABC):
+    inputs: tuple[Variable, ...]
+    outputs: tuple[Variable, ...]
 
-    def __call__(self, input: Variable) -> Variable:
-        x = input.data
-        y = self.forward(x)
+    def __call__(self, *inputs: Variable) -> Any:
+        """
+        Args:
+            inputs: Variables
 
-        output: Variable = Variable(y)
-        output.set_creater(self)  # output memorize this as the parent
+        Returns:
+            output Variable if the function returns single output, else returns tuple of Variable
 
-        self.input = input  # memorize input variable
-        self.output = output  # momorize output variable
-        return output
+        Intentionally weakly typed because its return type depends on the runtime subclass implementation.
+        Public APIs recover precise types with cast or wrapper functions.
+        """
+        xs = (input.data for input in inputs)
+        ys = self.forward(*xs)
+        if not isinstance(ys, tuple):
+            ys = (ys,)
 
+        outputs = tuple(as_variable(y) for y in ys)
+
+        for output in outputs:
+            output.set_creater(self)  # output memorize this as the parent
+
+        self.inputs = inputs  # memorize input variable
+        self.outputs = outputs  # momorize output variable
+        return outputs if len(outputs) > 1 else outputs[0]
+
+    @abstractmethod
     def forward(self, x) -> Any: ...
 
+    @abstractmethod
     def backward(self, gy) -> Any: ...
 
-    def _backward_safely(self, gy) -> np.ndarray:
+    def _backward_safely(self, gy) -> NDArray:
         if gy is None:
             raise TypeError("gradient must not be None.")
         gx = self.backward(gy)
@@ -96,6 +120,11 @@ def as_variable(obj: Any) -> Variable:
     return Variable(obj)
 
 
+def as_variables(*objs: Any) -> Generator[Variable]:
+    for obj in objs:
+        yield as_variable(obj)
+
+
 # Concrete Functions
 class Square(Function):
     def forward(self, x):
@@ -103,7 +132,7 @@ class Square(Function):
         return y
 
     def backward(self, gy):
-        x = self.input.data
+        x = self.inputs[0].data
         gx = 2.0 * x * gy
         return gx
 
@@ -114,9 +143,18 @@ class Exp(Function):
         return y
 
     def backward(self, gy):
-        x = self.input.data
+        x = self.inputs[0].data
         gx = np.exp(x) * gy
         return gx
+
+
+class Add(Function):
+    def forward(self, x0, x1):
+        y = x0 + x1
+        return y
+
+    def backward(self, gy):
+        return gy, gy
 
 
 def square(x: Variable) -> Variable:
@@ -125,3 +163,7 @@ def square(x: Variable) -> Variable:
 
 def exp(x: Variable) -> Variable:
     return Exp()(x)
+
+
+def add(x0: Variable, x1: Variable) -> tuple[Variable, Variable]:
+    return Add()(x0, x1)

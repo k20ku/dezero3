@@ -128,4 +128,25 @@ def test_forward(args, func, fwants, bwants):
     y.backward()
 
     for x, bwant in zip(xs, bwants):
-        np.testing.assert_allclose(x.data, bwant)
+        np.testing.assert_allclose(x.grad, bwant)
+
+
+def test_shared_variable():
+    x = as_variable(3)
+    y = add(x, x)
+    np.testing.assert_equal(y.data, 2 * x.data)
+    y.backward()
+    np.testing.assert_equal(x.grad, np.array(2))
+
+
+def test_reused_variable():
+    # first calculation
+    x = as_variable(1)
+    y = add(x, x)
+    y.backward()
+
+    # second
+    x.cleargrad()
+    y = add(add(x, x), x)
+    y.backward()
+    np.testing.assert_equal(x.grad, 3)

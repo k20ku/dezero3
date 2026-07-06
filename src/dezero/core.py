@@ -57,10 +57,18 @@ class Variable:
             if not isinstance(gxs, tuple):
                 gxs = (gxs,)
             for x, gx in zip(f.inputs, gxs):
-                x.grad = gx
+                if x.grad is None:  # when backward not yet computed
+                    x.grad = gx
+                else:
+                    # copy to avoid overwrite
+                    # (if you give this x.grad as View to another Variable such as Reshape)
+                    x.grad = x.grad + gx
                 if x.creator is not None:
                     # funcs never contains None!
                     funcs.append(x.creator)
+
+    def cleargrad(self):
+        self.grad = None
 
     def __str__(self):
         return to_str(self)
@@ -165,5 +173,5 @@ def exp(x: Variable) -> Variable:
     return Exp()(x)
 
 
-def add(x0: Variable, x1: Variable) -> tuple[Variable, Variable]:
+def add(x0: Variable, x1: Variable) -> Variable:
     return Add()(x0, x1)

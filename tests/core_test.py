@@ -3,7 +3,7 @@ from typing import cast
 import numpy as np
 import pytest
 
-from dezero.core import Variable, add, as_array, as_variable, as_variables, exp, square
+from dezero.core import Variable, add, as_variable, as_variables, exp, square
 
 
 class TestSquare:
@@ -67,7 +67,7 @@ class TestExp:
         ],
     )
     def test_forward(self, x, expected, assert_func):
-        x = as_array(x) if not isinstance(x, Variable) else x
+        x = as_variable(x)
         y = exp(x)
         assert_func(y.data, expected)
 
@@ -84,6 +84,12 @@ class TestExp:
         assert_func(x.grad, expected)
 
 
+def quad_two_times(x: Variable):
+    a = square(x)
+    y = add(square(a), square(a))
+    return y
+
+
 @pytest.mark.parametrize(
     ("args", "func", "fwants", "bwants"),
     [
@@ -93,9 +99,15 @@ class TestExp:
             np.array([13.0, 25.0]),
             (np.array([4.0, 6.0]), np.array([6.0, 8.0])),
         ),
+        (
+            np.array([[2.0, 3.0], [-1.0, 0.0]]),
+            lambda x: quad_two_times(x),  # 2*x**4 -> 8*x**3
+            2 * np.array([[2.0, 3.0], [-1.0, 0.0]]) ** 4,
+            8 * np.array([[2.0, 3.0], [-1.0, 0.0]]) ** 3,
+        ),
     ],
 )
-def test_forward(args, func, fwants, bwants):
+def test_for_back(args, func, fwants, bwants):
     if not isinstance(args, tuple):
         args = (args,)
     xs = as_variables(*args)

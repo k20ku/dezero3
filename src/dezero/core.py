@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import heapq
 from abc import ABC, abstractmethod
+from itertools import count
 from typing import Any, Generator
 
 import numpy as np
@@ -35,9 +37,12 @@ class Variable:
         self.data = as_array(data)
         self.grad: NDArray | None = None
         self.creator: "Function" | None = None
+        self.generation: int = 0
 
     def set_creater(self, func: "Function" | None):
         self.creator = func
+        # creator's successer variable (this) is new generation
+        self.generation = func.generation + 1 if func is not None else 0
 
     def backward(self):
         # Complexity should exist somewhere. Choose where.
@@ -45,12 +50,31 @@ class Variable:
         if self.grad is None:
             self.grad = np.ones_like(self.data)
         # graph contains only one Variable node
+        # creator
         if self.creator is None:
             return
-        # func stack (never contain None!)
-        funcs = [self.creator]
+        # func priority queue (never contain None!)
+        funcs = []
+        counter = count()  # to avoid heapq starting to compare Function and Function
+        # when both two Functions are of the generation.
+
+        def push_func(f: "Function"):
+            # avoid repeated backward
+            if not f.is_seen:
+                # set -generation as a key and value is f
+                heapq.heappush(funcs, (-f.generation, next(counter), f))
+                f.is_seen = True
+
+        def pop_func() -> "Function":
+            # heappop pops smallest key element with O(log(n)) time.
+            # We registered function's key as -f.generation,
+            # so we can retrive a function with smallest -generation i.e. maximum generation
+            _, _, f = heapq.heappop(funcs)
+            return f
+
+        push_func(self.creator)
         while funcs:
-            f = funcs.pop()
+            f = pop_func()
 
             gys = (output.grad for output in f.outputs)
             gxs = f.backward(*gys)
@@ -65,7 +89,7 @@ class Variable:
                     x.grad = x.grad + gx
                 if x.creator is not None:
                     # funcs never contains None!
-                    funcs.append(x.creator)
+                    push_func(x.creator)
 
     def cleargrad(self):
         self.grad = None
@@ -78,6 +102,8 @@ class Variable:
 class Function(ABC):
     inputs: tuple[Variable, ...]
     outputs: tuple[Variable, ...]
+    generation: int
+    is_seen: bool = False
 
     def __call__(self, *inputs: Variable) -> Any:
         """
@@ -85,41 +111,36 @@ class Function(ABC):
             inputs: Variables
 
         Returns:
-            output Variable if the function returns single output, else returns tuple of Variable
+            Variable if the function returns single output, else returns tuple of Variable
 
         Intentionally weakly typed because its return type depends on the runtime subclass implementation.
         Public APIs recover precise types with cast or wrapper functions.
         """
         xs = (input.data for input in inputs)
         ys = self.forward(*xs)
+
         if not isinstance(ys, tuple):
             ys = (ys,)
-
         outputs = tuple(as_variable(y) for y in ys)
 
+        # maximum generation of inputs is the same as function's generation
+        self.generation = max(x.generation for x in inputs)
+        # make each output to memorize this as the parent
         for output in outputs:
-            output.set_creater(self)  # output memorize this as the parent
+            output.set_creater(self)
 
         self.inputs = inputs  # memorize input variable
         self.outputs = outputs  # momorize output variable
         return outputs if len(outputs) > 1 else outputs[0]
+
+    def __str__(self):
+        return to_str(self)
 
     @abstractmethod
     def forward(self, x) -> Any: ...
 
     @abstractmethod
     def backward(self, gy) -> Any: ...
-
-    def _backward_safely(self, gy) -> NDArray:
-        if gy is None:
-            raise TypeError("gradient must not be None.")
-        gx = self.backward(gy)
-        gx = as_array(gx)
-
-        return gx
-
-    def __str__(self):
-        return to_str(self)
 
 
 def as_variable(obj: Any) -> Variable:

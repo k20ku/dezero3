@@ -105,9 +105,9 @@ pytest tests/core_test.py::TestSquare
         - Computation Graph
         - Backward Propagation (basic)
         - Gradient Checking
+        - Add / 複数入力演算
 
 2. 実装中
-        - Add / 複数入力演算
         - Weak Reference
         - 高階な自動微分機能
         - CNN 関連ユーティリティ

@@ -159,7 +159,10 @@ def rosenbrock(x0, x1):
 ```python
 type NDArray = np.ndarray
 
-ndarray = np.ndarray
+xp = np
+
+ndarray = xp.ndarray
+
 ```
 
 np.ndarrayをいちいち書くのはめんどくさい（将来的な`cupy`対応をする）ため，型エイリアスと動的な型は一か所に置いてあるがそれぞれ定義している
@@ -203,4 +206,15 @@ def f() -> NDArray:...
 特に後半で登場するユーティリティ関数や GPU 対応コードについては、Chainer の実装を参考にしながら理解を進めている。
 
 一方でフレームワーク全体の方針は，現代のPyTorchやTensorflowを参考にしている（型付けの方針など）．成熟しているため方向性がぶれにくいからである．
+
+## Benchmark
+
+```bash
+uv run benchmarks/dangling.py
+```
+
+| Mode      | During computation | Before GC | After GC |
+| --------- | -----------------: | --------: | -------: |
+| With Grad |            +6.4 MB |   +8.0 MB |   +836 B |
+| No Grad   |            +0.8 MB |   +0.8 MB |   +176 B |
 

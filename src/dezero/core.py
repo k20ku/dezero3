@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import heapq
+import weakref
 from abc import ABC, abstractmethod
 from itertools import count
 from typing import Any, Generator
@@ -9,15 +11,17 @@ import numpy as np
 
 type NDArray = np.ndarray
 
-ndarray = np.ndarray
+xp = np
+
+ndarray = xp.ndarray
 
 
 # Helper
 def as_array(x) -> NDArray:
     if isinstance(x, ndarray):
         return x
-    if np.isscalar(x):
-        return np.array(x)
+    if xp.isscalar(x):
+        return xp.array(x)
     raise TypeError(f"{type(x)} is not allowed for Variable")
 
 
@@ -29,6 +33,36 @@ def to_str(obj) -> str:
         fields.append(f"{key}=({val_repr})({val_type})")
     fields_str = ",".join(fields)
     return f"{obj.__class__}({fields_str})"
+
+
+class Config:
+    enable_backprop = True
+
+
+@contextlib.contextmanager
+def using_config(name: str, value):
+    try:
+        old_value = getattr(Config, name)
+    except AttributeError as e:
+        raise RuntimeError(f"failed to change config name {name!r}") from e
+    else:
+        try:
+            setattr(Config, name, value)
+            yield
+        finally:
+            setattr(Config, name, old_value)
+
+
+def no_grad():
+    """
+    Example:
+    ```
+    with no_grad():
+        x = Variable(2.0)
+        y = square(x)
+    ```
+    """
+    return using_config("enable_backprop", False)
 
 
 # Variable
@@ -44,11 +78,11 @@ class Variable:
         # creator's successer variable (this) is new generation
         self.generation = func.generation + 1 if func is not None else 0
 
-    def backward(self):
+    def backward(self, retain_grad=False):
         # Complexity should exist somewhere. Choose where.
         # Hence, choose here.
         if self.grad is None:
-            self.grad = np.ones_like(self.data)
+            self.grad = xp.ones_like(self.data)
         # graph contains only one Variable node
         # creator
         if self.creator is None:
@@ -76,7 +110,7 @@ class Variable:
         while funcs:
             f = pop_func()
 
-            gys = (output.grad for output in f.outputs)
+            gys = (output().grad for output in f.outputs)
             gxs = f.backward(*gys)
             if not isinstance(gxs, tuple):
                 gxs = (gxs,)
@@ -91,6 +125,11 @@ class Variable:
                     # funcs never contains None!
                     push_func(x.creator)
 
+                # all path node drops the grad
+                if not retain_grad:
+                    for y in f.outputs:
+                        y().grad = None
+
     def cleargrad(self):
         self.grad = None
 
@@ -101,7 +140,7 @@ class Variable:
 # Abstract Function
 class Function(ABC):
     inputs: tuple[Variable, ...]
-    outputs: tuple[Variable, ...]
+    outputs: tuple[weakref.ReferenceType[Variable], ...]
     generation: int
     is_seen: bool = False
 
@@ -123,14 +162,19 @@ class Function(ABC):
             ys = (ys,)
         outputs = tuple(as_variable(y) for y in ys)
 
-        # maximum generation of inputs is the same as function's generation
-        self.generation = max(x.generation for x in inputs)
-        # make each output to memorize this as the parent
-        for output in outputs:
-            output.set_creater(self)
+        # processes for backprop
+        if Config.enable_backprop:
+            # maximum generation of inputs is the same as function's generation
+            self.generation = max(x.generation for x in inputs)
+            # make each output to memorize this as the parent
+            for output in outputs:
+                output.set_creater(self)
 
-        self.inputs = inputs  # memorize input variable
-        self.outputs = outputs  # momorize output variable
+            self.inputs = inputs  # memorize input variable for backprop
+            self.outputs = tuple(
+                weakref.ref(output) for output in outputs
+            )  # momorize output variable
+
         return outputs if len(outputs) > 1 else outputs[0]
 
     def __str__(self):
@@ -168,12 +212,12 @@ class Square(Function):
 
 class Exp(Function):
     def forward(self, x):
-        y = np.exp(x)
+        y = xp.exp(x)
         return y
 
     def backward(self, gy):
         x = self.inputs[0].data
-        gx = np.exp(x) * gy
+        gx = xp.exp(x) * gy
         return gx
 
 

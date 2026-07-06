@@ -162,3 +162,24 @@ def test_reused_variable():
     y = add(add(x, x), x)
     y.backward()
     np.testing.assert_equal(x.grad, 3)
+
+
+def test_weakref():
+    import gc
+    import weakref
+
+    y = as_variable(0.2)
+    for i in range(8):
+        y = square(y)
+        # reference to the intermediate node
+        if i == 4:
+            import weakref
+
+            ref = weakref.ref(y)
+
+    np.testing.assert_allclose(y.data, (0.2) ** (2**8))
+
+    del y
+    gc.collect()
+
+    assert ref() is None

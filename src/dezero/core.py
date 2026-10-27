@@ -89,15 +89,17 @@ class Variable:
             return
         # func priority queue (never contain None!)
         funcs = []
+        # 二重登録を防ぐため
+        seen_funcs = set()
         counter = count()  # to avoid heapq starting to compare Function and Function
         # when both two Functions are of the generation.
 
         def push_func(f: "Function"):
             # avoid repeated backward
-            if not f.is_seen:
+            if not f in seen_funcs:
                 # set -generation as a key and value is f
                 heapq.heappush(funcs, (-f.generation, next(counter), f))
-                f.is_seen = True
+                seen_funcs.add(f)
 
         def pop_func() -> "Function":
             # heappop pops smallest key element with O(log(n)) time.
@@ -142,7 +144,6 @@ class Function(ABC):
     inputs: tuple[Variable, ...]
     outputs: tuple[weakref.ReferenceType[Variable], ...]
     generation: int
-    is_seen: bool = False
 
     def __call__(self, *inputs: Variable) -> Any:
         """

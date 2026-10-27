@@ -74,12 +74,17 @@ class TestExp:
     @pytest.mark.parametrize(
         ("x", "expected", "assert_func"),
         [
-            (np.array(3.0), np.array(6.0), np.testing.assert_equal),
+            (np.array(3.0), np.exp(3.0), np.testing.assert_equal),
+            (
+                np.array([[1, 3.1], [- 4, 0]]),
+                np.exp(np.array([[1, 3.1], [- 4, 0]])),
+                np.testing.assert_equal,
+            ),
         ],
     )
     def test_backward(self, x, expected, assert_func):
         x = Variable(x)
-        y = square(x)
+        y = exp(x)
         y.backward()
         assert_func(x.grad, expected)
 
@@ -101,7 +106,7 @@ def quad_two_times(x: Variable):
         ),
         (
             np.array([[2.0, 3.0], [-1.0, 0.0]]),
-            lambda x: quad_two_times(x),  # 2*x**4 -> 8*x**3
+            lambda x: quad_two_times(x),  # d/dx(2*x**4) = 8*x**3
             2 * np.array([[2.0, 3.0], [-1.0, 0.0]]) ** 4,
             8 * np.array([[2.0, 3.0], [-1.0, 0.0]]) ** 3,
         ),

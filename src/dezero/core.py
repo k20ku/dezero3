@@ -29,10 +29,9 @@ def to_str(obj) -> str:
     fields = []
     for key, val in vars(obj).items():
         val_repr = repr(val)
-        val_type = type(val).__name__
-        fields.append(f"{key}=({val_repr})({val_type})")
-    fields_str = ",".join(fields)
-    return f"{obj.__class__}({fields_str})"
+        fields.append(f"{key}={val_repr}")
+    fields_str = ", ".join(fields)
+    return f"{type(obj)}{{{fields_str}}}"
 
 
 class Config:
@@ -67,13 +66,14 @@ def no_grad():
 
 # Variable
 class Variable:
-    def __init__(self, data: Any):
+    def __init__(self, data: Any, name: str=''):
         self.data = as_array(data)
         self.grad: NDArray | None = None
-        self.creator: "Function" | None = None
+        self.creator: 'Function | None' = None
         self.generation: int = 0
+        self.name: str = name
 
-    def set_creater(self, func: "Function" | None):
+    def set_creater(self, func: 'Function | None'):
         self.creator = func
         # creator's successer variable (this) is new generation
         self.generation = func.generation + 1 if func is not None else 0
@@ -135,7 +135,26 @@ class Variable:
     def cleargrad(self):
         self.grad = None
 
-    def __str__(self):
+    @property
+    def shape(self):
+        return self.data.shape
+
+    @property
+    def ndim(self):
+        return self.data.ndim
+
+    @property
+    def size(self):
+        return self.data.size
+
+    @property
+    def dtype(self):
+        return self.data.dtype
+
+    def __len__(self):
+        return self.data.__len__()
+
+    def __repr__(self):
         return to_str(self)
 
 

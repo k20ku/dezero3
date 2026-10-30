@@ -110,6 +110,18 @@ def quad_two_times(x: Variable):
             2 * np.array([[2.0, 3.0], [-1.0, 0.0]]) ** 4,
             8 * np.array([[2.0, 3.0], [-1.0, 0.0]]) ** 3,
         ),
+        (
+            (np.array([-1.0, 23.0]), np.array([-3.0, 4.0])),
+            lambda x, y: x + y,
+            np.array([-4.0, 27.0]),
+            (np.array([1.0, 1.0]), np.array([1.0, 1.0])),
+        ),
+        (
+            (np.array([32.1, -2.0]), np.array([3.0, 111.0])),
+            lambda x, y: x * y,
+            np.array([96.3, -222.0]),
+            (np.array([3.0, 111.0]), np.array([32.1, -2.0])),
+        ),
     ],
 )
 def test_for_back(args, func, fwants, bwants):
@@ -188,3 +200,21 @@ def test_weakref():
     gc.collect()
 
     assert ref() is None
+
+"""
+TODO: test
+
+Variable - Variable
+int - Variable
+float - Variable
+NDArray - Variable
+Variable - int
+Variable - float
+Variable -NDArray
+int * Variable
+NDArray * Variable
+square(x0) = x0 ** 2
+sqrt(x0) = x0 ** (1/2)
+
+numerical_diff = backward
+"""

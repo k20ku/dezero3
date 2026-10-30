@@ -3,9 +3,9 @@ from __future__ import annotations
 import contextlib
 import heapq
 import weakref
-from abc import ABC, abstractmethod
+from abc import ABC
 from itertools import count
-from typing import Any, Generator
+from typing import Any, Generator, override, Callable
 
 import numpy as np
 
@@ -66,8 +66,15 @@ def no_grad():
 
 # Variable
 class Variable:
+    """
+    aaaaa
+    """
+    # sets enough high priority so that `NDArray [operator] Variable`
+    # calls not the operator overriden by the NDArray but Variable.
+    __array_priority__: int = 200
+
     def __init__(self, data: Any, name: str=''):
-        self.data = as_array(data)
+        self.data: NDArray = as_array(data)
         self.grad: NDArray | None = None
         self.creator: 'Function | None' = None
         self.generation: int = 0
@@ -88,9 +95,10 @@ class Variable:
         if self.creator is None:
             return
         # func priority queue (never contain None!)
-        funcs = []
+        # (generation, count, Function)
+        funcs: list[tuple[int, int, "Function"]] = []
         # 二重登録を防ぐため
-        seen_funcs = set()
+        seen_funcs = set["Function"]()
         counter = count()  # to avoid heapq starting to compare Function and Function
         # when both two Functions are of the generation.
 
@@ -154,12 +162,41 @@ class Variable:
     def __len__(self):
         return self.data.__len__()
 
+    @override
     def __repr__(self):
         return to_str(self)
+
+    def __add__(self, other: Any):
+        return add(self, other)
+    def __radd__(self, other: Any):
+        return add(self, other)
+    def __mul__(self, other: Any):
+        return mul(self, other)
+    def __rmul__(self, other: Any):
+        return mul(self, other)
+    def __neg__(self):
+        return neg(self)
+    def __sub__(self, other: Any):
+        return sub(self, other)
+    def __rsub__(self, other: Any):
+        return rsub(self, other)
+    def __truediv__(self, other: Any):
+        return div(self, other)
+    def __rtruediv__(self, other: Any):
+        return rdiv(self, other)
+    def __pow__(self, c: Any):
+        return pow(self, c)
 
 
 # Abstract Function
 class Function(ABC):
+    """
+    Base Function that represents Variables to Variables function.
+
+    For Users of this class:
+        forward: NDArrays -> NDArray
+        backward: NDArrays -> NDArray
+    """
     inputs: tuple[Variable, ...]
     outputs: tuple[weakref.ReferenceType[Variable], ...]
     generation: int
@@ -180,7 +217,7 @@ class Function(ABC):
 
         if not isinstance(ys, tuple):
             ys = (ys,)
-        outputs = tuple(as_variable(y) for y in ys)
+        outputs: tuple[Variable, ...] = tuple(as_variable(y) for y in ys)
 
         # processes for backprop
         if Config.enable_backprop:
@@ -200,11 +237,13 @@ class Function(ABC):
     def __str__(self):
         return to_str(self)
 
-    @abstractmethod
-    def forward(self, x) -> Any: ...
+    def forward(self, x) -> Any:...
+    """
+    Foward is not strictly typed for the users's flexiblity of Function subclass
+    Prefer users to returns NDArray or list of NDarrays not None.
+    """
 
-    @abstractmethod
-    def backward(self, gy) -> Any: ...
+    def backward(self, gy) -> Any:...
 
 
 def as_variable(obj: Any) -> Variable:
@@ -249,6 +288,51 @@ class Add(Function):
     def backward(self, gy):
         return gy, gy
 
+class Mul(Function):
+    def forward(self, x0, x1) -> Any:
+        y = x0 * x1
+        return y
+
+    def backward(self, gy) -> Any:
+        # y = x0 * x1 => dy/dx0 = x1, dy/dx1 = x0
+        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        return gy * x1, gy * x0
+
+class Neg(Function):
+    def forward(self, x):
+        return -x
+
+    def backward(self, gy):
+        return -gy
+
+class Sub(Function):
+    def forward(self, x0, x1):
+        return x0 - x1
+
+    def backward(self, gy):
+        return gy, -gy
+
+class Div(Function):
+    def forward(self, x0, x1):
+        y = x0 / x1
+        return y
+
+    def backward(self, gy):
+        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        y0 = gy / x0
+        y1 = gy * (- x0 / x1 ** 2)
+        return y0, y1
+
+class Pow(Function):
+    def __init__(self, c):
+        self.c = c
+    def forward(self, x):
+        return x ** self.c
+    def backward(self, gy):
+        # y = x ** c, dy/dx = c * x**(c-1)
+        x = self.inputs[0].data
+        c = self.c
+        return c * x ** (c - 1) * gy
 
 def square(x: Variable) -> Variable:
     return Square()(x)
@@ -258,5 +342,37 @@ def exp(x: Variable) -> Variable:
     return Exp()(x)
 
 
-def add(x0: Variable, x1: Variable) -> Variable:
-    return Add()(x0, x1)
+def add(x0: Variable, x1: Any) -> Variable:
+    _x1 = as_variable(x1)
+    return Add()(x0, _x1)
+
+def sub(x0: Variable, x1: Any) -> Variable:
+    _x1 = as_variable(x1)
+    return Sub()(x0, _x1)
+
+def rsub(x0: Variable, x1: Any) -> Variable:
+    """
+    rsub(x, y) = y - x
+    """
+    _x1 = as_variable(x1)
+    return Sub()(_x1, x0)
+
+def mul(x0: Variable, x1: Any) -> Variable:
+    _x1 = as_variable(x1)
+    return Mul()(x0, _x1)
+
+def neg(x: Variable) -> Variable:
+    return Neg()(x)
+
+def div(x0: Variable, x1: Any) -> Variable:
+    _x1 = as_variable(x1)
+    return Div()(x0, _x1)
+
+def rdiv(x0: Variable, x1: Any) -> Variable:
+    _x1 = as_variable(x1)
+    return Div()(_x1, x0)
+
+def pow(x: Variable, c: Any) -> Variable:
+    return Pow(c)(x)
+
+

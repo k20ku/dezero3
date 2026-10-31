@@ -1,4 +1,4 @@
-from typing import Callable, Concatenate, ParamSpec, TypeVar
+from typing import Callable, Concatenate, ParamSpec, TypeVar, Any
 
 import numpy as np
 from numpy import ndarray
@@ -12,12 +12,12 @@ Variable_T = TypeVar("Variable_T", bound=Variable)
 
 
 def gradient_check(
-    f: Callable[Concatenate[Variable, Param], Variable_T],
+    f: Callable[..., Variable_T],
     x: ndarray | Variable,
-    rtol=1e-4,
-    atol=1e-5,
-    *args: Param.args,
-    **kwargs: Param.kwargs,
+    *args: Any,
+    rtol: float =1e-4,
+    atol: float =1e-5,
+    **kwargs: Any,
 ) -> bool:
     """Test backward procedure of a given function.
 
@@ -40,14 +40,13 @@ def gradient_check(
     Returns:
         bool: Return True if the result is within a tolerance, otherwise False.
     """
-    # TODO:accepting multiple 'Variable's
-    var_x = as_variable(x)
-    var_x.data = var_x.data.astype(np.float64)
+    x = as_variable(x)
+    x.data = x.data.astype(np.float64)
     num_grad = numerical_grad(f, x, *args, **kwargs)
-    y = f(var_x, *args, **kwargs)
+    y = f(x, *args, **kwargs)
     y.backward()
-    assert var_x.grad is not None
-    bp_grad = var_x.grad
+    assert x.grad is not None
+    bp_grad = x.grad
 
     assert bp_grad.shape == num_grad.shape
     res = array_allclose(num_grad, bp_grad, atol=atol, rtol=rtol)
@@ -67,13 +66,30 @@ def gradient_check(
 
 
 def numerical_grad(
-    f: Callable[Concatenate[Variable, Param], Variable],
+    f: Callable[..., Variable_T],
     x: ndarray | Variable,
-    eps=1e-4,
-    *args: Param.args,
-    **kwargs: Param.kwargs,
+    *args: Any,
+    eps: float = 1e-5,
+    **kwargs: Any,
 ) -> ndarray:
     """Computes numerical gradient by finite differences.
+
+    Args:
+        f (callable): A function which gets `Variable`s and returns `Variable`s.
+        x (`ndarray` or `dezero.Variable`): A target `Variable` for computing
+            the gradient.
+        eps (float): The diff
+        *args: If `f` needs variables except `x`, you can specify with this
+            argument.,
+        **kwargs: If `f` needs keyword variables, you can specify with this
+            argument.
+
+    Returns:
+        `ndarray`: Gradient.
+
+    Details:
+        original: https://github.com/oreilly-japan/deep-learning-from-scratch-3/blob/b5f3cf12a9e4ed84fc97b57bf41a25610d69c9e5/dezero/utils.py#L234
+
 
     ## Example
     ```
@@ -88,23 +104,11 @@ def numerical_grad(
         )
         return Add()(x0, x1)
     ```
-    Args:
-        f (callable): A function which gets `Variable`s and returns `Variable`s.
-        x (`ndarray` or `dezero.Variable`): A target `Variable` for computing
-            the gradient.
-        eps (float): The diff
-        *args: If `f` needs variables except `x`, you can specify with this
-            argument.,
-        **kwargs: If `f` needs keyword variables, you can specify with this
-            argument.
 
-    Returns:
-        `ndarray`: Gradient.
     """
 
-    # TODO:accepting multiple 'Variable's
     # このVariableを使い倒す
-    x_var = x if isinstance(x, Variable) else as_variable(x)
+    x_var = as_variable(x)
     # TODO: cuda extentions in future
     # xp = cuda.get_array_module(x)
     # if xp is not np:
@@ -128,9 +132,9 @@ def numerical_grad(
         _y2 = y2.data.copy()
 
         diff = (_y1 - _y2).sum()
-        grad[idx] = diff / (2 * eps)
+        grad[idx] = diff / (2 * eps) # sum_{i in idx} (f(x_i + h) - f(x_i - h)) / (2*h)
 
-        x_var.data[idx] = tmp_val
+        x_var.data[idx] = tmp_val # return to prior value
         it.iternext()
     return grad
 

@@ -3,9 +3,10 @@ from __future__ import annotations
 import contextlib
 import heapq
 import weakref
+from collections.abc import Generator
 from abc import ABC
 from itertools import count
-from typing import Any, Generator, override, Callable
+from typing import Any, override
 
 import numpy as np
 
@@ -32,7 +33,6 @@ def to_str(obj) -> str:
         fields.append(f"{key}={val_repr}")
     fields_str = ", ".join(fields)
     return f"{type(obj)}{{{fields_str}}}"
-
 
 class Config:
     enable_backprop = True
@@ -120,7 +120,14 @@ class Variable:
         while funcs:
             f = pop_func()
 
-            gys = (output().grad for output in f.outputs)
+            def gen_gys(f: "Function"):
+                for output in f.outputs:
+                    output = output()
+                    if output is None:
+                        raise AssertionError("Function output should not contain None")
+                    yield output.grad
+
+            gys = gen_gys(f)
             gxs = f.backward(*gys)
             if not isinstance(gxs, tuple):
                 gxs = (gxs,)
@@ -137,8 +144,11 @@ class Variable:
 
                 # all path node drops the grad
                 if not retain_grad:
-                    for y in f.outputs:
-                        y().grad = None
+                    for y_weak in f.outputs:
+                        y = y_weak()
+                        if y is None:
+                            continue
+                        y.grad = None
 
     def cleargrad(self):
         self.grad = None
@@ -231,6 +241,9 @@ class Function(ABC):
             self.outputs = tuple(
                 weakref.ref(output) for output in outputs
             )  # momorize output variable
+
+        if len(outputs) == 0:
+            raise AssertionError("Expected code to be unreachable")
 
         return outputs if len(outputs) > 1 else outputs[0]
 

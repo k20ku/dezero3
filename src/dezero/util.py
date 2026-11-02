@@ -1,11 +1,10 @@
-from typing import Callable, Concatenate, ParamSpec, TypeVar, Any
+from typing import Callable, TypeVar, Any
 
 import numpy as np
 from numpy import ndarray
 
 from dezero.core import Variable, as_variable
-
-Param = ParamSpec("Param")
+from dezero.utils.grad import numerical_grad
 
 """ return value is Variable or its subclass"""
 Variable_T = TypeVar("Variable_T", bound=Variable)
@@ -39,6 +38,22 @@ def gradient_check(
 
     Returns:
         bool: Return True if the result is within a tolerance, otherwise False.
+
+    ## Example
+
+    ```
+    def test_backward3(self):
+        x = np.random.randn(3, 3)
+        y = np.random.randn(3, 1)
+        self.assertTrue(gradient_check(F.add, x, y))
+    def add(x0, x1):
+        x1 = as_array(
+            x1,
+            dezero.cuda.get_array_module(x0.data)
+        )
+        return Add()(x0, x1)
+    ```
+
     """
     x = as_variable(x)
     x.data = x.data.astype(np.float64)
@@ -64,79 +79,6 @@ def gradient_check(
         print(" values: {} ...".format(val[1:-1]))
     return res
 
-
-def numerical_grad(
-    f: Callable[..., Variable_T],
-    x: ndarray | Variable,
-    *args: Any,
-    eps: float = 1e-5,
-    **kwargs: Any,
-) -> ndarray:
-    """Computes numerical gradient by finite differences.
-
-    Args:
-        f (callable): A function which gets `Variable`s and returns `Variable`s.
-        x (`ndarray` or `dezero.Variable`): A target `Variable` for computing
-            the gradient.
-        eps (float): The diff
-        *args: If `f` needs variables except `x`, you can specify with this
-            argument.,
-        **kwargs: If `f` needs keyword variables, you can specify with this
-            argument.
-
-    Returns:
-        `ndarray`: Gradient.
-
-    Details:
-        original: https://github.com/oreilly-japan/deep-learning-from-scratch-3/blob/b5f3cf12a9e4ed84fc97b57bf41a25610d69c9e5/dezero/utils.py#L234
-
-
-    ## Example
-    ```
-    def test_backward3(self):
-        x = np.random.randn(3, 3)
-        y = np.random.randn(3, 1)
-        self.assertTrue(gradient_check(F.add, x, y))
-    def add(x0, x1):
-        x1 = as_array(
-            x1,
-            dezero.cuda.get_array_module(x0.data)
-        )
-        return Add()(x0, x1)
-    ```
-
-    """
-
-    # このVariableを使い倒す
-    x_var = as_variable(x)
-    # TODO: cuda extentions in future
-    # xp = cuda.get_array_module(x)
-    # if xp is not np:
-    #     np_x = cuda.as_numpy(x)
-    # else:
-    #     np_x = x
-    grad = np.zeros_like(x_var.data)
-
-    # C低レイヤでndarrayを直接メモリ操作
-    it = np.nditer(x_var.data, flags=["multi_index"], op_flags=["readwrite"])
-    while not it.finished:
-        idx = it.multi_index
-        tmp_val = x_var.data[idx].copy()
-
-        x_var.data[idx] = tmp_val + eps
-        y1: Variable = f(x_var, *args, **kwargs)  # f(x+h)
-        _y1 = y1.data.copy()
-
-        x_var.data[idx] = tmp_val - eps
-        y2 = f(x_var, *args, **kwargs)  # f(x-h)
-        _y2 = y2.data.copy()
-
-        diff = (_y1 - _y2).sum()
-        grad[idx] = diff / (2 * eps) # sum_{i in idx} (f(x_i + h) - f(x_i - h)) / (2*h)
-
-        x_var.data[idx] = tmp_val # return to prior value
-        it.iternext()
-    return grad
 
 
 def array_allclose(

@@ -6,24 +6,38 @@ import weakref
 from collections.abc import Generator
 from abc import ABC
 from itertools import count
-from typing import Any, override
+from typing import Any, TypeVar, cast, override, Generic
 
 import numpy as np
 
-type NDArray = np.ndarray
-
 xp = np
 
+type NDArray = xp.ndarray
 ndarray = xp.ndarray
 
+type DType = xp.float64
+dtype = xp.float64
 
 # Helper
-def as_array(x) -> NDArray:
-    if isinstance(x, ndarray):
-        return x
-    if xp.isscalar(x):
-        return xp.array(x)
-    raise TypeError(f"{type(x)} is not allowed for Variable")
+def asarray(x: Any) -> NDArray:
+    """
+    Args:
+        x: A value tranformed into NDArray. This does not create new NDArray if x is NDArray or Variable
+    Returns:
+        NDArray which Variable can hold.
+    Raises:
+        ValueError: x contains infs or NaNs.
+        TypeError: x's dtype is not subtype of xp.number
+    """
+    if isinstance(x, Variable):
+        return x.data
+    try:
+        x = xp.asarray_chkfinite(x)
+    except ValueError:
+        raise ValueError("array must not contain infs or NaNs")
+    if not np.issubdtype(x.dtype, np.number):
+        raise TypeError(f"{x.dtype} is not allowed. Subclass of {np.number} allowed.")
+    return np.astype(x, dtype)
 
 
 def to_str(obj) -> str:
@@ -63,6 +77,7 @@ def no_grad():
     """
     return using_config("enable_backprop", False)
 
+type Variables = tuple[Variable, Variable, *tuple[Variable, ...]]
 
 # Variable
 class Variable:
@@ -74,7 +89,7 @@ class Variable:
     __array_priority__: int = 200
 
     def __init__(self, data: Any, name: str=''):
-        self.data: NDArray = as_array(data)
+        self.data: NDArray = asarray(data)
         self.grad: NDArray | None = None
         self.creator: 'Function | None' = None
         self.generation: int = 0
@@ -85,7 +100,7 @@ class Variable:
         # creator's successer variable (this) is new generation
         self.generation = func.generation + 1 if func is not None else 0
 
-    def backward(self, retain_grad=False):
+    def backward(self, retain_grad: bool=False):
         # Complexity should exist somewhere. Choose where.
         # Hence, choose here.
         if self.grad is None:
@@ -120,14 +135,16 @@ class Variable:
         while funcs:
             f = pop_func()
 
-            def gen_gys(f: "Function"):
+            def gen_outputs_grad(f: "Function") -> Generator[NDArray]:
                 for output in f.outputs:
                     output = output()
                     if output is None:
                         raise AssertionError("Function output should not contain None")
+                    if output.grad is None:
+                        raise AssertionError("Function outputs should not contain None grad when backwarding")
                     yield output.grad
 
-            gys = gen_gys(f)
+            gys = gen_outputs_grad(f)
             gxs = f.backward(*gys)
             if not isinstance(gxs, tuple):
                 gxs = (gxs,)
@@ -138,6 +155,7 @@ class Variable:
                     # copy to avoid overwrite
                     # (if you give this x.grad as View to another Variable such as Reshape)
                     x.grad = x.grad + gx
+                    # z = f(y0(x), y1(x)) -> dz/dz = df/dy0 * dy0/x + df/dy1 * dy1/x
                 if x.creator is not None:
                     # funcs never contains None!
                     push_func(x.creator)
@@ -197,6 +215,8 @@ class Variable:
     def __pow__(self, c: Any):
         return pow(self, c)
 
+def variable(x: Any) -> Variable:
+    return Variable(x)
 
 # Abstract Function
 class Function(ABC):
@@ -211,7 +231,7 @@ class Function(ABC):
     outputs: tuple[weakref.ReferenceType[Variable], ...]
     generation: int
 
-    def __call__(self, *inputs: Variable) -> Any:
+    def __call__(self, *inputs: Variable):
         """
         Args:
             inputs: Variables
@@ -227,7 +247,7 @@ class Function(ABC):
 
         if not isinstance(ys, tuple):
             ys = (ys,)
-        outputs: tuple[Variable, ...] = tuple(as_variable(y) for y in ys)
+        outputs: tuple[Variable, ...] = tuple(as_variables(*ys))
 
         # processes for backprop
         if Config.enable_backprop:
@@ -264,11 +284,9 @@ def as_variable(obj: Any) -> Variable:
         return obj
     return Variable(obj)
 
-
 def as_variables(*objs: Any) -> Generator[Variable]:
     for obj in objs:
         yield as_variable(obj)
-
 
 # Concrete Functions
 class Square(Function):
@@ -302,11 +320,11 @@ class Add(Function):
         return gy, gy
 
 class Mul(Function):
-    def forward(self, x0, x1) -> Any:
+    def forward(self, x0, x1):
         y = x0 * x1
         return y
 
-    def backward(self, gy) -> Any:
+    def backward(self, gy):
         # y = x0 * x1 => dy/dx0 = x1, dy/dx1 = x0
         x0, x1 = self.inputs[0].data, self.inputs[1].data
         return gy * x1, gy * x0
@@ -387,5 +405,4 @@ def rdiv(x0: Variable, x1: Any) -> Variable:
 
 def pow(x: Variable, c: Any) -> Variable:
     return Pow(c)(x)
-
 

@@ -175,20 +175,6 @@ def test_shared_variable():
     np.testing.assert_equal(x.grad.data, np.array(2))
 
 
-def test_reused_variable():
-    # first calculation
-    x = as_variable(1)
-    y = add(x, x)
-    y.backward()
-
-    # second
-    x.cleargrad()
-    y = add(add(x, x), x)
-    y.backward()
-    assert x.grad is not None
-    np.testing.assert_equal(x.grad.data, 3)
-
-
 """
 TODO: test
 

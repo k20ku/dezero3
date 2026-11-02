@@ -100,7 +100,7 @@ class Variable:
         # creator's successer variable (this) is new generation
         self.generation = func.generation + 1 if func is not None else 0
 
-    def backward(self, retain_grad: bool=False):
+    def backward(self, retain_grad: bool=False, create_graph: bool=False):
         # Complexity should exist somewhere. Choose where.
         # Hence, choose here.
         if self.grad is None:
@@ -144,29 +144,31 @@ class Variable:
                         raise AssertionError("Function outputs should not contain None grad when backwarding")
                     yield output.grad
 
-            gys = gen_outputs_grad(f)
-            gxs = f.backward(*gys)
-            if not isinstance(gxs, tuple):
-                gxs = (gxs,)
-            for x, gx in zip(f.inputs, gxs):
-                if x.grad is None:  # when backward not yet computed
-                    x.grad = gx
-                else:
-                    # copy to avoid overwrite
-                    # (if you give this x.grad as View to another Variable such as Reshape)
-                    x.grad = x.grad + gx
-                    # z = f(y0(x), y1(x)) -> dz/dz = df/dy0 * dy0/x + df/dy1 * dy1/x
-                if x.creator is not None:
-                    # funcs never contains None!
-                    push_func(x.creator)
+            gys = tuple(gen_outputs_grad(f))
+            # backward and x.grad + gx create graph.
+            with using_config("enable_backprop", create_graph):
+                gxs = f.backward(*gys)
+                if not isinstance(gxs, tuple):
+                    gxs = (gxs,)
+                for x, gx in zip(f.inputs, gxs):
+                    if x.grad is None:  # when backward not yet computed
+                        x.grad = gx
+                    else:
+                        # copy to avoid overwrite
+                        # (if you give this x.grad as View to another Variable such as Reshape)
+                        x.grad = x.grad + gx
+                        # z = f(y0(x), y1(x)) -> dz/dz = df/dy0 * dy0/x + df/dy1 * dy1/x
+                    if x.creator is not None:
+                        # funcs never contains None!
+                        push_func(x.creator)
 
-                # all path node drops the grad
-                if not retain_grad:
-                    for y_weak in f.outputs:
-                        y = y_weak()
-                        if y is None:
-                            continue
-                        y.grad = None
+            # all path node drops the grad
+            if not retain_grad:
+                for y_weak in f.outputs:
+                    y = y_weak()
+                    if y is None:
+                        continue
+                    y.grad = None
 
     def cleargrad(self):
         self.grad = None

@@ -44,7 +44,7 @@ You can make REPL responsive to module-file changes
 
 ```python
 %load_ext autoreload
-%autoreload 2
+%autoreload all
 ```
 
 You can run specific script file (i.e. `main.py`) on the REPL.
@@ -107,10 +107,10 @@ pytest tests/core_test.py::TestSquare
         - Gradient Checking
         - Add / 複数入力演算
 
-2. 実装中
-        - Weak Reference
-        - 高階な自動微分機能
-        - CNN 関連ユーティリティ
+In implementation,
+
+- Reshape
+- NNW usage
 
 ## Improvements
 
@@ -144,15 +144,13 @@ def rosenbrock(x0, x1):
 
 のような Python らしい記述を損なわないことも重視している。
 
-### 2. テストフレームワーク
+### 
 
 - 書籍では標準の unittest が利用されている
 - このリポジトリでは pytest を採用している。
 
-- **理由**:
-        - パラメータ化テストが容易
-        - テストの追加がしやすい
-        - テストケース数が増えても管理しやすい
+For below reasons, 
+- parametrize test
 
 ### 3. 動的型と静的型ヒントの区別
 
@@ -175,37 +173,10 @@ isinstance(x, ndarray)
 def f() -> NDArray:...
 ```
 
-## Learnings
+Basically `np.multi_index` is too primitive to use these days.
 
-### 1. Reference and Pointer
-
-計算グラフでは参照やポインタをいかに効率よく安全に扱うかが重要
-
-そのため、
-
-- Variable の参照
-- Function の参照
-- Numpy 配列の view や 参照
-- 循環参照
-- Weak Reference
-
-といったオブジェクト構造を意識しながら実装している。
-
-### 2. Auto-Grad (自動微分) and Numerical Diff (数値微分)
-
-数値微分は正しさの検証には便利だが、大規模なニューラルネットワークでは現実的な速度で動作させるのは困難。
-
-そのため、このリポジトリでは数値微分を勾配検証に利用しつつ、自動微分による効率的な逆伝播の実装を進めている。
-
-その際，数値微分もkoki氏の数値微分を最適化したコードを参考にしている．加えて型付けと細かい変更を加えている．これからも修正予定である．
-
-### 3. Respect to Chainer, PyTorch, Tensorflow
-
-実装を追う中で、DeZero の多くの設計が Chainer の影響を受けていることを知った。
-
-特に後半で登場するユーティリティ関数や GPU 対応コードについては、Chainer の実装を参考にしながら理解を進めている。
-
-一方でフレームワーク全体の方針は，現代のPyTorchやTensorflowを参考にしている（型付けの方針など）．成熟しているため方向性がぶれにくいからである．
+Bottleneck of numerical diff is `f` that creates the graph for each index. 
+Therefore, so is alternate to `np.ndindex` + `for` loop.
 
 ## Benchmark
 

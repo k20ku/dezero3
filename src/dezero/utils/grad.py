@@ -70,8 +70,6 @@ def _numerical_grad_nd(
 ) -> NDArray:
     x = np.astype(x, np.float64, copy=True)
     grad = np.zeros_like(x)
-    it = np.nditer(x, flags=["multi_index"])
-
     # Use ndindex to iterate over all elements in x.
     # It is very desiable to be this func implemented as 
     # `simple_grad = lambda f, x: (f(x + eps) - f(x - eps))/ (2 * eps)`

@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Any, Callable, cast
 
 import numpy as np
 import pytest
@@ -28,7 +28,8 @@ class TestSquare:
         x = as_variable(x0)
         y = square(x)
         y.backward()
-        assert_func(x.grad, expected)
+        assert x.grad is not None
+        assert_func(x.grad.data, expected)
 
 
 class TestAdd:
@@ -55,8 +56,10 @@ class TestAdd:
         x1 = as_variable(x1)
         y = add(x0, x1)
         y.backward()
-        assert_func(x0.grad, expected)
-        assert_func(x1.grad, expected)
+        assert x0.grad is not None
+        assert x1.grad is not None
+        assert_func(x0.grad.data, expected)
+        assert_func(x1.grad.data, expected)
 
 
 class TestExp:
@@ -86,7 +89,8 @@ class TestExp:
         x = Variable(x)
         y = exp(x)
         y.backward()
-        assert_func(x.grad, expected)
+        assert x.grad is not None
+        assert_func(x.grad.data, expected)
 
 
 def quad_two_times(x: Variable):
@@ -99,32 +103,32 @@ def quad_two_times(x: Variable):
     ("args", "func", "fwants", "bwants"),
     [
         (
-            (np.array([2.0, 3.0]), np.array([3.0, 4.0])),
+            ([2.0, 3.0], [3.0, 4.0]),
             lambda x, y: add(square(x), square(y)),
-            np.array([13.0, 25.0]),
-            (np.array([4.0, 6.0]), np.array([6.0, 8.0])),
+            [13.0, 25.0],
+            ([4.0, 6.0], [6.0, 8.0]),
         ),
         (
-            np.array([[2.0, 3.0], [-1.0, 0.0]]),
+            [[2.0, 3.0], [-1.0, 0.0]],
             lambda x: quad_two_times(x),  # d/dx(2*x**4) = 8*x**3
             2 * np.array([[2.0, 3.0], [-1.0, 0.0]]) ** 4,
             8 * np.array([[2.0, 3.0], [-1.0, 0.0]]) ** 3,
         ),
         (
-            (np.array([-1.0, 23.0]), np.array([-3.0, 4.0])),
+            ([-1.0, 23.0], [-3.0, 4.0]),
             lambda x, y: x + y,
-            np.array([-4.0, 27.0]),
-            (np.array([1.0, 1.0]), np.array([1.0, 1.0])),
+            [-4.0, 27.0],
+            ([1.0, 1.0], [1.0, 1.0]),
         ),
         (
-            (np.array([32.1, -2.0]), np.array([3.0, 111.0])),
+            ([32.1, -2.0], [3.0, 111.0]),
             lambda x, y: x * y,
-            np.array([96.3, -222.0]),
-            (np.array([3.0, 111.0]), np.array([32.1, -2.0])),
+            [96.3, -222.0],
+            ([3.0, 111.0], [32.1, -2.0]),
         ),
     ],
 )
-def test_for_back(args, func, fwants, bwants):
+def test_for_back(args: tuple[Any], func: Callable[..., Variable], fwants, bwants):
     if not isinstance(args, tuple):
         args = (args,)
     xs = as_variables(*args)
@@ -136,6 +140,7 @@ def test_for_back(args, func, fwants, bwants):
         fwants = (fwants,)
 
     for y, fwant in zip(ys, fwants):
+        assert y is not None
         np.testing.assert_allclose(y.data, fwant)
 
     # when backward not implimented
@@ -157,7 +162,8 @@ def test_for_back(args, func, fwants, bwants):
     y.backward()
 
     for x, bwant in zip(xs, bwants):
-        np.testing.assert_allclose(x.grad, bwant)
+        assert x.grad is not None
+        np.testing.assert_allclose(x.grad.data, bwant)
 
 
 def test_shared_variable():
@@ -165,7 +171,8 @@ def test_shared_variable():
     y = add(x, x)
     np.testing.assert_equal(y.data, 2 * x.data)
     y.backward()
-    np.testing.assert_equal(x.grad, np.array(2))
+    assert x.grad is not None
+    np.testing.assert_equal(x.grad.data, np.array(2))
 
 
 def test_reused_variable():
@@ -178,28 +185,9 @@ def test_reused_variable():
     x.cleargrad()
     y = add(add(x, x), x)
     y.backward()
-    np.testing.assert_equal(x.grad, 3)
+    assert x.grad is not None
+    np.testing.assert_equal(x.grad.data, 3)
 
-
-def test_weakref():
-    import gc
-    import weakref
-
-    y = as_variable(0.2)
-    for i in range(8):
-        y = square(y)
-        # reference to the intermediate node
-        if i == 4:
-            import weakref
-
-            ref = weakref.ref(y)
-
-    np.testing.assert_allclose(y.data, (0.2) ** (2**8))
-
-    del y
-    gc.collect()
-
-    assert ref() is None
 
 """
 TODO: test

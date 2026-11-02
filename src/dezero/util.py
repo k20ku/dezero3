@@ -3,7 +3,7 @@ from typing import Callable, TypeVar, Any
 import numpy as np
 from numpy import ndarray
 
-from dezero.core import Variable, as_variable
+from dezero.core import Variable, as_variable, asarray
 from dezero.utils.grad import numerical_grad
 
 """ return value is Variable or its subclass"""
@@ -61,7 +61,7 @@ def gradient_check(
     y = f(x, *args, **kwargs)
     y.backward()
     assert x.grad is not None
-    bp_grad = x.grad
+    bp_grad = x.grad.data
 
     assert bp_grad.shape == num_grad.shape
     res = array_allclose(num_grad, bp_grad, atol=atol, rtol=rtol)
@@ -97,8 +97,8 @@ def array_allclose(
         bool: True if the two arrays are equal within the given tolerance,
             False otherwise.
     """
-    a = a.data if isinstance(a, Variable) else a
-    b = b.data if isinstance(b, Variable) else b
+    a = asarray(a)
+    b = asarray(b)
     # TODO: cuda extentions
     # a, b = cuda.as_numpy(a), cuda.as_numpy(b)
     return np.allclose(a, b, atol=atol, rtol=rtol)

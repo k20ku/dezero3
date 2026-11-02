@@ -90,7 +90,7 @@ class Variable:
 
     def __init__(self, data: Any, name: str=''):
         self.data: NDArray = asarray(data)
-        self.grad: NDArray | None = None
+        self.grad: Variable | None = None
         self.creator: 'Function | None' = None
         self.generation: int = 0
         self.name: str = name
@@ -104,7 +104,7 @@ class Variable:
         # Complexity should exist somewhere. Choose where.
         # Hence, choose here.
         if self.grad is None:
-            self.grad = xp.ones_like(self.data)
+            self.grad = as_variable(xp.ones_like(self.data))
         # graph contains only one Variable node
         # creator
         if self.creator is None:
@@ -135,7 +135,7 @@ class Variable:
         while funcs:
             f = pop_func()
 
-            def gen_outputs_grad(f: "Function") -> Generator[NDArray]:
+            def gen_outputs_grad(f: "Function") -> Generator[Variable]:
                 for output in f.outputs:
                     output = output()
                     if output is None:
@@ -225,7 +225,7 @@ class Function(ABC):
 
     For Users of this class:
         forward: NDArrays -> NDArray
-        backward: NDArrays -> NDArray
+        backward: Variables -> Variable
     """
     inputs: tuple[Variable, ...]
     outputs: tuple[weakref.ReferenceType[Variable], ...]
@@ -285,6 +285,13 @@ def as_variable(obj: Any) -> Variable:
     return Variable(obj)
 
 def as_variables(*objs: Any) -> Generator[Variable]:
+    """
+    Cautious:
+        Be careful when passing a `Generator` around using `*args`;
+        since `Generator` is single-use,
+        they get consumed, which can lead to unintended bugs.
+        Get generators consumed by `tuple(generator)` to use with `*args`.
+    """
     for obj in objs:
         yield as_variable(obj)
 
@@ -295,7 +302,7 @@ class Square(Function):
         return y
 
     def backward(self, gy):
-        x = self.inputs[0].data
+        x, = self.inputs
         gx = 2.0 * x * gy
         return gx
 
@@ -306,8 +313,8 @@ class Exp(Function):
         return y
 
     def backward(self, gy):
-        x = self.inputs[0].data
-        gx = xp.exp(x) * gy
+        x, = self.inputs
+        gx = exp(x) * gy
         return gx
 
 
@@ -326,7 +333,7 @@ class Mul(Function):
 
     def backward(self, gy):
         # y = x0 * x1 => dy/dx0 = x1, dy/dx1 = x0
-        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        x0, x1 = self.inputs
         return gy * x1, gy * x0
 
 class Neg(Function):
@@ -349,7 +356,7 @@ class Div(Function):
         return y
 
     def backward(self, gy):
-        x0, x1 = self.inputs[0].data, self.inputs[1].data
+        x0, x1 = self.inputs
         y0 = gy / x0
         y1 = gy * (- x0 / x1 ** 2)
         return y0, y1
@@ -361,7 +368,7 @@ class Pow(Function):
         return x ** self.c
     def backward(self, gy):
         # y = x ** c, dy/dx = c * x**(c-1)
-        x = self.inputs[0].data
+        x, = self.inputs
         c = self.c
         return c * x ** (c - 1) * gy
 

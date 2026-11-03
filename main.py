@@ -18,7 +18,8 @@ def main():
 
     dot = graph(output=z, verbose=False)
     name="goldstein_price"
-    dir = Path.home()/"dezero"/"calc_graph"
+    #dir = Path.home()/"dezero"/"calc_graph"
+    dir = "resources"
     dot.save(filename=f"{name}.gv", directory=dir)
     dot.render(filename=f"{name}", directory=dir, view=False, cleanup=False, format='svg')
 

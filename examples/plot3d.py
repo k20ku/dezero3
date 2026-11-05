@@ -55,7 +55,7 @@ def main():
     Z1 = gx.data
     titles = [
         r"$y = \sin(x) \cdot \cos(y)$",
-        r"$\frac{\partial y}{\partial x}$",
+        r"$\frac{\partial y}{\partial x}",
     ]
     ZS = [Z0, Z1]
     fig, axs = plt.subplots(

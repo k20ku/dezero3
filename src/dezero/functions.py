@@ -34,9 +34,26 @@ class Cos(Function):
         return -gy * sin(x)
 
 
+class Tanh(Function):
+    def forward(self, x):
+        y = xp.tanh(x)
+        return y
+
+    def backward(self, gy):
+        (y_weak,) = self.outputs
+        y = y_weak()
+        if y is None:
+            raise AssertionError(f"{self} has None output")
+        return gy * (1 - y**2)
+
+
 def sin(x: Variable) -> Variable:
     return Sin()(x)
 
 
 def cos(x: Variable) -> Variable:
     return Cos()(x)
+
+
+def tanh(x: Variable) -> Variable:
+    return Tanh()(x)

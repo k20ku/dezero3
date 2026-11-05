@@ -14,8 +14,8 @@ def gradient_check(
     f: Callable[..., Variable_T],
     x: ndarray | Variable,
     *args: Any,
-    rtol: float =1e-4,
-    atol: float =1e-5,
+    rtol: float = 1e-4,
+    atol: float = 1e-5,
     **kwargs: Any,
 ) -> bool:
     """Test backward procedure of a given function.
@@ -78,7 +78,6 @@ def gradient_check(
         val = str(bp_grad.flatten()[:10])
         print(" values: {} ...".format(val[1:-1]))
     return res
-
 
 
 def array_allclose(

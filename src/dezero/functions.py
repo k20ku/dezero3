@@ -1,4 +1,18 @@
 from dezero.core import Function, Variable, xp
+import dezero.core as dc
+
+Exp = dc.Exp
+Square = dc.Square
+
+Add = dc.Add
+Sub = dc.Sub
+Mul = dc.Mul
+Div = dc.Div
+Neg = dc.Neg
+Pow = dc.Pow
+exp = dc.exp
+square = dc.square
+
 
 class Sin(Function):
     def forward(self, x):
@@ -6,8 +20,9 @@ class Sin(Function):
         return y
 
     def backward(self, gy):
-        x, = self.inputs
+        (x,) = self.inputs
         return gy * cos(x)
+
 
 class Cos(Function):
     def forward(self, x):
@@ -15,11 +30,13 @@ class Cos(Function):
         return y
 
     def backward(self, gy):
-        x, = self.inputs
-        return - gy * sin(x)
+        (x,) = self.inputs
+        return -gy * sin(x)
+
 
 def sin(x: Variable) -> Variable:
     return Sin()(x)
+
 
 def cos(x: Variable) -> Variable:
     return Cos()(x)

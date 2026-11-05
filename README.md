@@ -189,3 +189,28 @@ uv run benchmarks/dangling.py
 | With Grad |            +6.4 MB |   +8.0 MB |   +836 B |
 | No Grad   |            +0.8 MB |   +0.8 MB |   +176 B |
 
+## to $\LaTeX$
+
+```py
+import dezero.functions as F
+from dezero.core import variable
+from dezero.utils.sympy import to_latex
+
+x0 = dc.variable(2, name="x0")
+x1 = dc.variable(3, name="x1")
+y = F.exp(-(F.sin((x0 + x1) ** 2) + 1))
+
+to_latex(y) # 'e^{- 1.0 - \\sin{\\left(\\left(x_{0} + x_{1}\\right)^{2} \\right)}}'
+
+y.backward(create_graph=True)
+gx0 = x0.grad
+
+to_latex(gx0) # '- 1.0 \\cdot 2.0 \\left(x_{0} + x_{1}\\right) e^{- 1.0 - \\sin{\\left(\\left(x_{0} + x_{1}\\right)^{2} \\right)}} \\cos{\\left(\\left(x_{0} + x_{1}\\right)^{2} \\right)}'
+```
+
+```
+
+```
+$y &= e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}}$
+
+$\frac{\partial y}{\pathal y} &= - 1.0 \cdot 2.0 \left(x_{0} + x_{1}\right) e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}} \cos{\left(\left(x_{0} + x_{1}\right)^{2} \right)}$

@@ -1,3 +1,6 @@
+from pathlib import Path
+
+import matplotlib
 import numpy as np
 
 from dezero.core import variable
@@ -23,6 +26,9 @@ def main():
     for log, label in zip(logs, labels):
         plt.plot(x.data, log, label=label)
 
-    plt.legand(loc="lower right")
+    plt.legend(loc="lower right")
     plt.show()
 
+if __name__ == "__main__":
+    main()
+    

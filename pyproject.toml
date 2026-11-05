@@ -10,6 +10,8 @@ dependencies = [
     "graphviz>=0.21",
     "matplotlib>=3.11.2",
     "numpy>=2.0, <3.0",
+    "pyqt6>=6.12.0",
+    "sympy>=1.14.0",
 ]
 
 [project.urls]
@@ -20,6 +22,7 @@ dev = [
     "devtools>=0.12",
     "ipython>=9.8",
     "mypy>=2.1",
+    "pyqt6>=6.12.0",
     "pytest>=9.0",
     "ruff>=0.15",
     "scipy>=1.18.0",

@@ -3,10 +3,10 @@ from __future__ import annotations
 import contextlib
 import heapq
 import weakref
-from collections.abc import Generator
 from abc import ABC
+from collections.abc import Generator
 from itertools import count
-from typing import Any, TypeVar, cast, override, Generic
+from typing import Any, Generic, TypeVar, cast, override
 
 import numpy as np
 
@@ -17,6 +17,7 @@ ndarray = xp.ndarray
 
 type DType = xp.float64
 dtype = xp.float64
+
 
 # Helper
 def asarray(x: Any) -> NDArray:
@@ -32,7 +33,7 @@ def asarray(x: Any) -> NDArray:
     if isinstance(x, Variable):
         return x.data
     try:
-        x = xp.asarray_chkfinite(x)
+        x: NDArray = xp.asarray_chkfinite(x)
     except ValueError:
         raise ValueError("array must not contain infs or NaNs")
     if not np.issubdtype(x.dtype, np.number):
@@ -47,6 +48,7 @@ def to_str(obj) -> str:
         fields.append(f"{key}={val_repr}")
     fields_str = ", ".join(fields)
     return f"{type(obj)}{{{fields_str}}}"
+
 
 class Config:
     enable_backprop = True
@@ -77,30 +79,33 @@ def no_grad():
     """
     return using_config("enable_backprop", False)
 
+
 type Variables = tuple[Variable, Variable, *tuple[Variable, ...]]
+
 
 # Variable
 class Variable:
     """
     aaaaa
     """
+
     # sets enough high priority so that `NDArray [operator] Variable`
     # calls not the operator overriden by the NDArray but Variable.
     __array_priority__: int = 200
 
-    def __init__(self, data: Any, name: str=''):
+    def __init__(self, data: Any, name: str | None = None):
         self.data: NDArray = asarray(data)
         self.grad: Variable | None = None
-        self.creator: 'Function | None' = None
+        self.creator: "Function | None" = None
         self.generation: int = 0
-        self.name: str = name
+        self.name: str | None = name
 
-    def set_creater(self, func: 'Function | None'):
+    def set_creater(self, func: "Function | None"):
         self.creator = func
         # creator's successer variable (this) is new generation
         self.generation = func.generation + 1 if func is not None else 0
 
-    def backward(self, retain_grad: bool=False, create_graph: bool=False):
+    def backward(self, retain_grad: bool = False, create_graph: bool = False):
         # Complexity should exist somewhere. Choose where.
         # Hence, choose here.
         if self.grad is None:
@@ -141,7 +146,9 @@ class Variable:
                     if output is None:
                         raise AssertionError("Function output should not contain None")
                     if output.grad is None:
-                        raise AssertionError("Function outputs should not contain None grad when backwarding")
+                        raise AssertionError(
+                            "Function outputs should not contain None grad when backwarding"
+                        )
                     yield output.grad
 
             gys = tuple(gen_outputs_grad(f))
@@ -158,7 +165,7 @@ class Variable:
                         # (if you give this x.grad as View to another Variable such as Reshape)
                         x.grad = x.grad + gx
                         # z = f(y0(x), y1(x)) -> dz/dz = df/dy0 * dy0/x + df/dy1 * dy1/x
-                    if x.creator is not None:
+                    if x.creator:
                         # funcs never contains None!
                         push_func(x.creator)
 
@@ -166,9 +173,8 @@ class Variable:
             if not retain_grad:
                 for y_weak in f.outputs:
                     y = y_weak()
-                    if y is None:
-                        continue
-                    y.grad = None
+                    if y is not None:
+                        y.grad = None
 
     def cleargrad(self):
         self.grad = None
@@ -198,27 +204,38 @@ class Variable:
 
     def __add__(self, other: Any):
         return add(self, other)
+
     def __radd__(self, other: Any):
         return add(self, other)
+
     def __mul__(self, other: Any):
         return mul(self, other)
+
     def __rmul__(self, other: Any):
         return mul(self, other)
+
     def __neg__(self):
         return neg(self)
+
     def __sub__(self, other: Any):
         return sub(self, other)
+
     def __rsub__(self, other: Any):
         return rsub(self, other)
+
     def __truediv__(self, other: Any):
         return div(self, other)
+
     def __rtruediv__(self, other: Any):
         return rdiv(self, other)
+
     def __pow__(self, c: Any):
         return pow(self, c)
 
-def variable(x: Any) -> Variable:
-    return Variable(x)
+
+def variable(x: Any, name=None) -> Variable:
+    return Variable(x, name)
+
 
 # Abstract Function
 class Function(ABC):
@@ -229,6 +246,7 @@ class Function(ABC):
         forward: NDArrays -> NDArray
         backward: Variables -> Variable
     """
+
     inputs: tuple[Variable, ...]
     outputs: tuple[weakref.ReferenceType[Variable], ...]
     generation: int
@@ -272,19 +290,21 @@ class Function(ABC):
     def __str__(self):
         return to_str(self)
 
-    def forward(self, x) -> Any:...
+    def forward(self, x) -> Any: ...
+
     """
     Foward is not strictly typed for the users's flexiblity of Function subclass
     Prefer users to returns NDArray or list of NDarrays not None.
     """
 
-    def backward(self, gy) -> Any:...
+    def backward(self, gy) -> Any: ...
 
 
 def as_variable(obj: Any) -> Variable:
     if isinstance(obj, Variable):
         return obj
     return Variable(obj)
+
 
 def as_variables(*objs: Any) -> Generator[Variable]:
     """
@@ -297,6 +317,7 @@ def as_variables(*objs: Any) -> Generator[Variable]:
     for obj in objs:
         yield as_variable(obj)
 
+
 # Concrete Functions
 class Square(Function):
     def forward(self, x):
@@ -304,7 +325,7 @@ class Square(Function):
         return y
 
     def backward(self, gy):
-        x, = self.inputs
+        (x,) = self.inputs
         gx = 2.0 * x * gy
         return gx
 
@@ -315,7 +336,7 @@ class Exp(Function):
         return y
 
     def backward(self, gy):
-        x, = self.inputs
+        (x,) = self.inputs
         gx = exp(x) * gy
         return gx
 
@@ -328,6 +349,7 @@ class Add(Function):
     def backward(self, gy):
         return gy, gy
 
+
 class Mul(Function):
     def forward(self, x0, x1):
         y = x0 * x1
@@ -338,6 +360,7 @@ class Mul(Function):
         x0, x1 = self.inputs
         return gy * x1, gy * x0
 
+
 class Neg(Function):
     def forward(self, x):
         return -x
@@ -345,12 +368,14 @@ class Neg(Function):
     def backward(self, gy):
         return -gy
 
+
 class Sub(Function):
     def forward(self, x0, x1):
         return x0 - x1
 
     def backward(self, gy):
         return gy, -gy
+
 
 class Div(Function):
     def forward(self, x0, x1):
@@ -360,19 +385,23 @@ class Div(Function):
     def backward(self, gy):
         x0, x1 = self.inputs
         y0 = gy / x0
-        y1 = gy * (- x0 / x1 ** 2)
+        y1 = gy * (-x0 / x1**2)
         return y0, y1
+
 
 class Pow(Function):
     def __init__(self, c):
         self.c = c
+
     def forward(self, x):
-        return x ** self.c
+        return x**self.c
+
     def backward(self, gy):
         # y = x ** c, dy/dx = c * x**(c-1)
-        x, = self.inputs
+        (x,) = self.inputs
         c = self.c
         return c * x ** (c - 1) * gy
+
 
 def square(x: Variable) -> Variable:
     return Square()(x)
@@ -386,9 +415,11 @@ def add(x0: Variable, x1: Any) -> Variable:
     _x1 = as_variable(x1)
     return Add()(x0, _x1)
 
+
 def sub(x0: Variable, x1: Any) -> Variable:
     _x1 = as_variable(x1)
     return Sub()(x0, _x1)
+
 
 def rsub(x0: Variable, x1: Any) -> Variable:
     """
@@ -397,21 +428,25 @@ def rsub(x0: Variable, x1: Any) -> Variable:
     _x1 = as_variable(x1)
     return Sub()(_x1, x0)
 
+
 def mul(x0: Variable, x1: Any) -> Variable:
     _x1 = as_variable(x1)
     return Mul()(x0, _x1)
 
+
 def neg(x: Variable) -> Variable:
     return Neg()(x)
+
 
 def div(x0: Variable, x1: Any) -> Variable:
     _x1 = as_variable(x1)
     return Div()(x0, _x1)
 
+
 def rdiv(x0: Variable, x1: Any) -> Variable:
     _x1 = as_variable(x1)
     return Div()(_x1, x0)
 
+
 def pow(x: Variable, c: Any) -> Variable:
     return Pow(c)(x)
-

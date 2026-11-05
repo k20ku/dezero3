@@ -208,9 +208,6 @@ gx0 = x0.grad
 to_latex(gx0) # '- 1.0 \\cdot 2.0 \\left(x_{0} + x_{1}\\right) e^{- 1.0 - \\sin{\\left(\\left(x_{0} + x_{1}\\right)^{2} \\right)}} \\cos{\\left(\\left(x_{0} + x_{1}\\right)^{2} \\right)}'
 ```
 
-```
+$y = e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}}$
 
-```
-$y &= e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}}$
-
-$\frac{\partial y}{\pathal y} &= - 1.0 \cdot 2.0 \left(x_{0} + x_{1}\right) e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}} \cos{\left(\left(x_{0} + x_{1}\right)^{2} \right)}$
+$\frac{\partial y}{\partial y} = - 1.0 \cdot 2.0 \left(x_{0} + x_{1}\right) e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}} \cos{\left(\left(x_{0} + x_{1}\right)^{2} \right)}$

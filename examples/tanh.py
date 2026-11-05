@@ -42,6 +42,6 @@ if __name__ == "__main__":
     gx = dn(n)
     dot = dg.graph(gx, verbose=False)
     dir = Path.home() / "dezero" / "cmp_graph"
-    dir = "resources"
+    #dir = "resources"
     name = f"tanh_diff{n+1}"
     dot.save(filename=f"{name}.gv", directory=dir)

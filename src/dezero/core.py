@@ -262,7 +262,7 @@ class Function(ABC):
         Intentionally weakly typed because its return type depends on the runtime subclass implementation.
         Public APIs recover precise types with cast or wrapper functions.
         """
-        xs = (input.data for input in inputs)
+        xs = tuple(input.data for input in inputs)
         ys = self.forward(*xs)
 
         if not isinstance(ys, tuple):
@@ -384,7 +384,7 @@ class Div(Function):
 
     def backward(self, gy):
         x0, x1 = self.inputs
-        y0 = gy / x0
+        y0 = gy / x1
         y1 = gy * (-x0 / x1**2)
         return y0, y1
 

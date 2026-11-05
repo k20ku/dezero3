@@ -40,7 +40,7 @@ class Tanh(Function):
         return y
 
     def backward(self, gy):
-        (y_weak,) = self.outputs
+        y_weak = self.outputs[0]
         y = y_weak()
         if y is None:
             raise AssertionError(f"{self} has None output")

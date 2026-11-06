@@ -40,8 +40,6 @@ if __name__ == "__main__":
             n = 0
 
     gx = dn(n)
-    dot = dg.graph(gx, verbose=False)
-    dir = Path.home() / "dezero" / "cmp_graph"
-    #dir = "resources"
-    name = f"tanh_diff{n+1}"
-    dot.save(filename=f"{name}.gv", directory=dir)
+    # dir = "resources"
+    name = f"tanh_diff{n + 1}"
+    dg.save_cmp_graph(gx, fname=name, home=True, verbose=False)

@@ -1,27 +1,47 @@
 import heapq
+from pathlib import Path
+import tempfile
+import typing
 from dezero.core import Function, Variable
+import os
 
 import graphviz
 
-def add_var(dot: graphviz.Digraph, v: Variable, verbose=False):
-    name = v.name if v.name is not None else ''
+_vcolor = "orange"
+_fcolor = "lightblue"
+
+
+def add_var(
+    dot: graphviz.Digraph,
+    v: Variable,
+    vcolor: str,
+    verbose=False,
+):
+    name = v.name if v.name is not None else ""
     if verbose and v.data is not None:
         label = f"{name}: {v.shape} {v.dtype}"
     else:
         label = name
-    dot.node(str(id(v)), label, color="orange", style="filled")
+    dot.node(str(id(v)), label, color=vcolor, style="filled")
 
-def add_func(dot: graphviz.Digraph, f: Function):
-    dot.node(str(id(f)), label=f.__class__.__name__, 
-            color="lightblue", style="filled", shape="box")
+
+def add_func(dot: graphviz.Digraph, f: Function, fcolor: str):
+    dot.node(
+        str(id(f)),
+        label=f.__class__.__name__,
+        color=fcolor,
+        style="filled",
+        shape="box",
+    )
     for x in f.inputs:
         dot.edge(str(id(x)), str(id(f)))
     for y in f.outputs:
         dot.edge(str(id(f)), str(id(y())))
 
-def graph(output: Variable, verbose=True):
+
+def create_graph(output: Variable, verbose=True, vcolor=_vcolor, fcolor=_fcolor):
     dot = graphviz.Digraph()
-    add_var(dot, output, verbose)
+    add_var(dot, output, vcolor=vcolor, verbose=verbose)
 
     if output.creator is None:
         return dot
@@ -39,11 +59,33 @@ def graph(output: Variable, verbose=True):
     push_func(output.creator)
     while heap:
         f = pop_func()
-        add_func(dot, f)
+        add_func(dot, f, fcolor=fcolor)
         for x in f.inputs:
-            add_var(dot, x, verbose=verbose)
+            add_var(dot, x, verbose=verbose, vcolor=vcolor)
             if x.creator:
                 push_func(x.creator)
 
     return dot
 
+
+def _dir(dir: os.PathLike | str | None, home: bool):
+    if home and dir is None:
+        return Path.home() / "dezero" / "cmp_graph"
+    if home and dir is not None:
+        return Path.home() / dir
+    if not home and dir is None:
+        return Path(tempfile.gettempdir()) / "dezero" / "cmp_graph"
+    return dir
+
+
+def save_cmp_graph(
+    x: Variable,
+    fname: os.PathLike | str | None,
+    dir: os.PathLike | str | None = None,
+    home=False,
+    verbose=True,
+    vcolor=_vcolor,
+    fcolor=_fcolor,
+):
+    dot = create_graph(x, verbose=verbose, fcolor=fcolor, vcolor=vcolor)
+    dot.save(filename=f"{fname}.gv", directory=_dir(dir, home))

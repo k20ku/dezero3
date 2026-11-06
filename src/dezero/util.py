@@ -17,7 +17,7 @@ def gradient_check(
     rtol: float = 1e-4,
     atol: float = 1e-5,
     **kwargs: Any,
-) -> bool:
+):
     """Test backward procedure of a given function.
 
     This automatically checks the backward-process of a given function. For
@@ -37,15 +37,20 @@ def gradient_check(
             argument.
 
     Returns:
-        bool: Return True if the result is within a tolerance, otherwise False.
+        None
 
+    Raises:
+        AssertionError: x.grad is None
+        AssertionError: backprop grad.shape not equals to numerical grad.shape
+        AssertionError: backprop grad not all close to numerical_grad
     ## Example
 
     ```
-    def test_backward3(self):
+    def test_backward3():
         x = np.random.randn(3, 3)
         y = np.random.randn(3, 1)
-        self.assertTrue(gradient_check(F.add, x, y))
+        gradient_check(F.add, x, y)
+
     def add(x0, x1):
         x1 = as_array(
             x1,
@@ -64,25 +69,10 @@ def gradient_check(
     bp_grad = x.grad.data
 
     assert bp_grad.shape == num_grad.shape
-    res = array_allclose(num_grad, bp_grad, atol=atol, rtol=rtol)
-
-    if not res:
-        print("")
-        print("========== FAILED (Gradient Check) ==========")
-        print("Numerical Grad")
-        print(" shape: {}".format(num_grad.shape))
-        val = str(num_grad.flatten()[:10])
-        print(" values: {} ...".format(val[1:-1]))
-        print("Backprop Grad")
-        print(" shape: {}".format(bp_grad.shape))
-        val = str(bp_grad.flatten()[:10])
-        print(" values: {} ...".format(val[1:-1]))
-    return res
+    assert_allclose(num_grad, bp_grad, atol=atol, rtol=rtol)
 
 
-def array_allclose(
-    a: ndarray | Variable, b: ndarray | Variable, rtol=1e-4, atol=1e-5
-) -> bool:
+def assert_allclose(a: ndarray | Variable, b: ndarray | Variable, rtol=1e-4, atol=1e-5):
     """Returns True if two arrays(or variables) are element-wise equal within a
     tolerance.
 
@@ -100,4 +90,4 @@ def array_allclose(
     b = asarray(b)
     # TODO: cuda extentions
     # a, b = cuda.as_numpy(a), cuda.as_numpy(b)
-    return np.allclose(a, b, atol=atol, rtol=rtol)
+    np.testing.assert_allclose(a, b, atol=atol, rtol=rtol)

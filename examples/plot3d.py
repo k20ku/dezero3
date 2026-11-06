@@ -1,37 +1,9 @@
-from collections import deque
-from itertools import count
-
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dezero.core import Function, Variable
+from dezero.core import Variable
 import dezero.functions as F
-
-import heapq
-
-import sympy
-
-
-def to_exp(output: Variable):
-    cache = {}
-    stack = deque([output])
-    while stack:
-        output = stack.pop()
-        f = output.creator
-        if f is None:
-            name = output.name if output.name is not None else f"x_{id(output)}"
-            cache[id(output)] = sympy.Symbol(name)
-            stack.pop()
-            continue
-        pendings = [input for input in f.inputs if id(input) not in cache]
-        if pendings:
-            stack.extend(pendings)
-        else:
-            args = tuple(cache[id(x)] for input in f.inputs)
-            func = type(f).__name__
-            cache[id(output)] = SYMPY[func](*args)
-            stack.pop()
-        return cache[id(output)]
+from dezero.utils.expr import to_latex
 
 
 def main():
@@ -46,17 +18,22 @@ def main():
     z = F.sin(x) * F.cos(y)
 
     Z0 = z.data
-    z.backward()
+    z.backward(create_graph=True)
 
     gx = x.grad
     if gx is None:
         print("Z is None")
         return
+    gx.name = "gx"
+    import dezero.utils.graph as dg
+
+    dg.save_cmp_graph(gx, "sin_cos", home=True, verbose=True)
     Z1 = gx.data
     titles = [
-        r"$y = \sin(x) \cdot \cos(y)$",
-        r"$\frac{\partial y}{\partial x}",
+        rf"$y ={to_latex(z)}$",
+        r"$\frac{\partial y}{\partial x}$",
     ]
+
     ZS = [Z0, Z1]
     fig, axs = plt.subplots(
         ncols=len(ZS),

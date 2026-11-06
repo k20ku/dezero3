@@ -2,49 +2,52 @@ from collections.abc import Callable
 from dezero.core import Function, Variable
 import dezero.core as dc
 import dezero.functions as F
-import sympy as sp
+import sympy as sy
 import heapq
 
-FuncTable = dict[type[Function], Callable[..., sp.Expr]]
+FuncTable = dict[type[Function], Callable[..., sy.Expr]]
 SYMPY: FuncTable = {
     F.Square: lambda f, x: x**2,
-    F.Exp: lambda f, x: sp.exp(x),
-    # specials
+    F.Exp: lambda f, x: sy.exp(x),
+    # syecials
     F.Add: lambda f, x, y: x + y,
     F.Sub: lambda f, x, y: x - y,
     F.Mul: lambda f, x, y: x * y,
     F.Div: lambda f, x, y: x / y,
     F.Neg: lambda f, x: -x,
     F.Pow: lambda f, x: x**f.c,
-    F.Sin: lambda f, x: sp.sin(x),
-    F.Cos: lambda f, x: sp.cos(x),
+    F.Sin: lambda f, x: sy.sin(x),
+    F.Cos: lambda f, x: sy.cos(x),
 }
 
 
 def symbol_leaf(v: Variable):
-    if v.name and v.name != "":
+    if v.name:
         name = v.name
     else:
-        name = f"{v.data}"
-    return sp.Symbol(name)
+        if v.data.ndim <= 1:
+            name = f"{v.data}"
+        else:
+            name = f"[: {v.dtype}{v.shape}]"
+    return sy.Symbol(name)
 
 
-def symbol_branch(f: Function, *args: sp.Expr, functable: FuncTable = {}):
+def symbol_branch(f: Function, *args: sy.Expr, functable: FuncTable = {}):
     ftype = type(f)
     if ftype in functable:
         func = functable[ftype]
         if not callable(func):
             raise ValueError(f"{ftype} key has not callable {func} value")
         output = func(f, *args)
-        if not isinstance(output, sp.Expr):
-            raise TypeError(f"f: {func} should return {sp.Expr}")
+        if not isinstance(output, sy.Expr):
+            raise TypeError(f"f: {func} should return {sy.Expr}")
         return output
     if ftype in SYMPY:
         func = SYMPY[ftype]
         output = func(f, *args)
         return output
 
-    return sp.Function(ftype.__name__)(*args)
+    return sy.Function(ftype.__name__)(*args)
 
 
 def to_expr(output: Variable, functable: FuncTable = {}):
@@ -62,7 +65,7 @@ def to_expr(output: Variable, functable: FuncTable = {}):
             for input in v.creator.inputs:
                 heapq.heappush(heap, (-v.generation, id(input), input))
 
-    expr: dict[int, sp.Expr] = {}
+    expr: dict[int, sy.Expr] = {}
     # pops lesser generation first
     for v in reversed(vars):
         f = v.creator
@@ -87,4 +90,4 @@ def to_latex(v: Variable, functable: FuncTable = {}) -> str:
         ValueError: functable contains a callable value.
         TypeError: functable's values contains a function does not return sympy.Expr
     """
-    return sp.latex(to_expr(v, functable))
+    return sy.latex(to_expr(v, functable))

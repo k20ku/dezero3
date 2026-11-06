@@ -1,4 +1,4 @@
-# Modernized Hobbistic Dezero
+# Modernized Deep Learning Framework From Scratch
 
 Deep Learning Framework repository.
 
@@ -8,7 +8,7 @@ Based on "Deep Learning from Scratch 3" by 斎藤康毅([koki0702](https://githu
 
 Modernized dezero or chainer ML framework adapted to current Python ecosystem and current ML environment.
 
-『ゼロから作る Deep Learning ③』をベースにした、MLフレームワーク実装リポジトリ。
+『ゼロから作る Deep Learning ③』をベースにしたMLフレームワーク実装リポジトリ。
 
 ## Developer Notices
 
@@ -71,11 +71,12 @@ pytest tests/core_test.py::TestSquare
 
 ## Motivation
 
-- Implement as I'd like to do because this is not official development but hobbist's.
+- Implement as k20ku would like to do because this is not official development but k20ku's own for now.
 - Customizable minimal chainer or pytorch
-- Add relatively strict type systems since developers (mainly me) can benefit from LSP.
+- Several known ML methods based on this repository's autograd
+- Add relatively strict type systems since developers (mainly me) can benefit from LSP
 - Reusablility by structual library
-- More efficint and faster alglrithm
+- More efficint and faster algorithm
 
 ## Development Process
 
@@ -106,8 +107,9 @@ Implemented are
 In implementation,
 
 - Reshape
+- Softmax
 - NNW usage
-- CNN, RNN, KV-Cache
+- Conv2d, Attention
 
 ## Improvements
 
@@ -123,7 +125,7 @@ This project heavly relies on [uv](https://docs.astral.sh/uv/) package manager.
 
 Example:
 
-強く型付けしているものは，
+Stricty typed are
 
 - `Variable`
 - `Function`
@@ -177,7 +179,9 @@ Original implementation uses `unittest`. However, this repository uses `pytest` 
 - mimimalized compared to `unittest` but has many features.
 - parametrize test
 
-#### dynamic type and static type
+### dynamic type and static type
+
+For feature introduction of `cupy`, static type alias and dynamic type(`ndarray`) is defined.
 
 ```python
 type NDArray = np.ndarray
@@ -187,11 +191,13 @@ xp = np
 ndarray = xp.ndarray
 ```
 
-np.ndarrayをいちいち書くのはめんどくさい（将来的な`cupy`対応をする）ため，型エイリアスと動的な型は一か所に置いてあるがそれぞれ定義している
+- Dynamic type usage
 
 ```python
 isinstance(x, ndarray)
 ```
+
+- Static type usage
 
 ```python
 def f() -> NDArray:...

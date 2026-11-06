@@ -1,25 +1,22 @@
-# dezero3
+# Modernized Hobbistic Dezero
 
-Deep Learning Framework repository based on "Deep Learning from Scratch 3" by 斎藤康毅([koki0702](https://github.com/koki0702))
+Deep Learning Framework repository.
 
-『ゼロから作る Deep Learning ③』をベースにした、自動微分ライブラリの実装リポジトリ。
+Based on "Deep Learning from Scratch 3" by 斎藤康毅([koki0702](https://github.com/koki0702))
 
-- 型ヒント・プロジェクト構成・テスト環境を整備しながら、自動微分エンジンの内部構造を理解することを目的としている。
-- 現在は Function Evaluation 周辺まで実装済みで、計算グラフと逆伝播の基盤部分を構築中。
+- URL: https://github.com/oreilly-japan/deep-learning-from-scratch-3
+
+Modernized dezero or chainer ML framework adapted to current Python ecosystem and current ML environment.
+
+『ゼロから作る Deep Learning ③』をベースにした、MLフレームワーク実装リポジトリ。
 
 ## Developer Notices
 
-- **Developers shuold make `venv` activated**.
-
-```bash
-uv venv
-source .venv/bin/activate
-```
-
-- Setting Up dependencies
+- setup dependencies and make `venv` activated.
 
 ```bash
 uv sync
+source .venv/bin/activate
 ```
 
 ## Run Dezero
@@ -61,6 +58,11 @@ To run all test,
 pytest
 ```
 
+```bash
+# or if you are not in vertual environment
+uv run pytest
+```
+
 To test specified class or functions (i.e. `class TestSquare` in `tests/core_test.py`)
 
 ```bash
@@ -69,62 +71,55 @@ pytest tests/core_test.py::TestSquare
 
 ## Motivation
 
-- 自動微分の仕組みを理解する
-- Python の型システムを活用する
-- ライブラリとして保守しやすい構成にする
-- 実装の背景にある設計を追う
+- Implement as I'd like to do because this is not official development but hobbist's.
+- Customizable minimal chainer or pytorch
+- Add relatively strict type systems since developers (mainly me) can benefit from LSP.
+- Reusablility by structual library
+- More efficint and faster alglrithm
 
-ニューラルネットワークそのものよりも、
+## Development Process
+
+This project is librarised koki's Dezero. Original Dezero Book precesses the implementations for each steps as the script. On the other hand, this repository have early aimed to be used by the library.
+
+References are
+
+- DeZero
+    - https://github.com/oreilly-japan/deep-learning-from-scratch-3
+- NumPy
+- Chainer
+  - https://docs.chainer.org/en/stable/index.html
+  - https://github.com/chainer/chainer
+- PyTorch
+  - https://github.com/pytorch/pytorch/tree/main/torch/csrc/autograd.
+
+Implemented are
 
 - Variable
 - Function
 - Computation Graph
-- Automatic Differentiation
-
-といった基盤技術に興味があり、その理解を目的として実装している。
-
-## Development Process
-
-- 書籍ではステップごとのスクリプトとして実装が進む
-- このリポジトリでは最初からライブラリとして利用できる構成を採用している。
-
-構成を考える際には、
-
-- DeZero
-- NumPy
-- Chainer
-- PyTorch
-
-などのリポジトリを参考にしている。
-
-また、環境管理には [uv](https://docs.astral.sh/uv/) を利用している。
-
-1. 実装済み
-        - Variable
-        - Function
-        - Computation Graph
-        - Backward Propagation (basic)
-        - Gradient Checking
-        - Add / 複数入力演算
+- Backward Propagation (basic)
+- Gradient Checking
+- Add / multiple inputs
+- computation graph traversal that enables drawing
+    ![goldstein-price function](./resources/goldstein_price.svg)
 
 In implementation,
 
 - Reshape
 - NNW usage
+- CNN, RNN, KV-Cache
 
 ## Improvements
 
-### 1. 型ヒント
+### project using `uv`
 
-このリポジトリでは型ヒントを積極的に導入している。
-ただし、すべてを厳密に型付けするのではなく、
+This project heavly relies on [uv](https://docs.astral.sh/uv/) package manager.
 
-- 内部実装は基本的に厳密に
-- 本質的に密結合な `Function` と `Variable` は動的に
-- 利用者向け API は柔軟に
-- 境界は厳格に
+### Type Hinting
 
-という方針を採っている。
+- `Variable`'s data only accepts Not-None NDArray (numpy.ndarray or cupy.ndarray).
+- `Function` class users do not have to cautious from type, it is loosely typed.
+- boundary of API and internals strictly typed
 
 Example:
 
@@ -133,26 +128,56 @@ Example:
 - `Variable`
 - `Function`
 - grad
-- 計算グラフ内部
+- internal of computation graph
 
-一方で利用者は，
+On the other hand, this project is taking care of user's the Pythonic code.
+
+```python
+class Sinh(Fucntion):
+    def forward(self, x):
+        # x is NDArray
+        y = xp.sinh(x)
+        return y
+    def backward(self, gy):
+        # gy is Variable
+        x, = self.inputs
+        gx = gy * Cosh()(x)
+        return gx
+
+class Cosh(Function):
+    def forward(self, x):
+        y = xp.cosh(x)
+        return y
+    def backward(self, gy):
+        x, = self.inputs
+        gx = gy * Sinh()(x)
+        return gx
+```
 
 ```python
 def rosenbrock(x0, x1):
     return 100 * (x1 - x0 ** 2) ** 2 + (x0 - 1) ** 2
 ```
 
-のような Python らしい記述を損なわないことも重視している。
+```python
+def goldstein_price(x1, x2):
+    return (
+        1 + (x1 + x2 + 1) ** 2 * (19 - 14 * x1 + 3 * x1**2 + 6 * x1 * x2 + 3 * x2**2)
+    ) * (
+        30
+        + (2 * x1 - 3 * x2) ** 2
+        * (18 - 32 * x1 + 12 * x1**2 + 48 * x2 - 36 * x1 * x2 + 27 * x2**2)
+    )
+```
 
-### 
+### test-framwork
 
-- 書籍では標準の unittest が利用されている
-- このリポジトリでは pytest を採用している。
+Original implementation uses `unittest`. However, this repository uses `pytest` for the reasons below.
 
-For below reasons, 
+- mimimalized compared to `unittest` but has many features.
 - parametrize test
 
-### 3. 動的型と静的型ヒントの区別
+#### dynamic type and static type
 
 ```python
 type NDArray = np.ndarray
@@ -160,7 +185,6 @@ type NDArray = np.ndarray
 xp = np
 
 ndarray = xp.ndarray
-
 ```
 
 np.ndarrayをいちいち書くのはめんどくさい（将来的な`cupy`対応をする）ため，型エイリアスと動的な型は一か所に置いてあるがそれぞれ定義している
@@ -178,7 +202,7 @@ Basically `np.multi_index` is too primitive to use these days.
 Bottleneck of numerical diff is `f` that creates the graph for each index. 
 Therefore, so is alternate to `np.ndindex` + `for` loop.
 
-## Benchmark
+### Benchmark
 
 ```bash
 uv run benchmarks/dangling.py
@@ -189,7 +213,11 @@ uv run benchmarks/dangling.py
 | With Grad |            +6.4 MB |   +8.0 MB |   +836 B |
 | No Grad   |            +0.8 MB |   +0.8 MB |   +176 B |
 
-## to $\LaTeX$
+### To $\LaTeX$ for matplotlib caption or documentation
+
+For Matplotlib caption.
+
+Writing LaTeX representation of cmp-graph by hand is a hard job, so this project implements `to_latex` function that traverses cmp-graph and gain a tidy LaTeX string.
 
 ```py
 import dezero.functions as F
@@ -208,6 +236,8 @@ gx0 = x0.grad
 to_latex(gx0) # '- 1.0 \\cdot 2.0 \\left(x_{0} + x_{1}\\right) e^{- 1.0 - \\sin{\\left(\\left(x_{0} + x_{1}\\right)^{2} \\right)}} \\cos{\\left(\\left(x_{0} + x_{1}\\right)^{2} \\right)}'
 ```
 
-$y = e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}}$
+`to_latex` output
 
-$\frac{\partial y}{\partial y} = - 1.0 \cdot 2.0 \left(x_{0} + x_{1}\right) e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}} \cos{\left(\left(x_{0} + x_{1}\right)^{2} \right)}$
+- $y = e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}}$
+
+- $\frac{\partial y}{\partial y} = - 1.0 \cdot 2.0 \left(x_{0} + x_{1}\right) e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}} \cos{\left(\left(x_{0} + x_{1}\right)^{2} \right)}$

@@ -1,8 +1,5 @@
-from collections.abc import Generator
 import heapq
-from itertools import count
-
-from dezero.core import Function, NDArray, Variable
+from dezero.core import Function, Variable
 
 import graphviz
 
@@ -25,29 +22,27 @@ def add_func(dot: graphviz.Digraph, f: Function):
 def graph(output: Variable, verbose=True):
     dot = graphviz.Digraph()
     add_var(dot, output, verbose)
+
     if output.creator is None:
         return dot
-    funcs: list[tuple[int, int, "Function"]] = []
-    seen_funcs = set["Function"]()
-    counter = count()  # to avoid heapq starting to compare Function and Function
+    seen, heap = set[Function](), list[tuple[int, int, Function]]()
 
-    def push_func(f: "Function"):
-        if not f in seen_funcs:
-            heapq.heappush(funcs, (-f.generation, next(counter), f))
-            seen_funcs.add(f)
+    def push_func(f: Function):
+        if f not in seen:
+            heapq.heappush(heap, (-f.generation, id(f), f))
+            seen.add(f)
 
-    def pop_func() -> "Function":
-        _, _, f = heapq.heappop(funcs)
+    def pop_func() -> Function:
+        _, _, f = heapq.heappop(heap)
         return f
 
     push_func(output.creator)
-    while funcs:
+    while heap:
         f = pop_func()
         add_func(dot, f)
         for x in f.inputs:
             add_var(dot, x, verbose=verbose)
-            if x.creator is not None:
-                # funcs never contains None!
+            if x.creator:
                 push_func(x.creator)
 
     return dot

@@ -1,6 +1,6 @@
 [project]
 name = "dezero3-k20ku"
-version = "0.2.0"
+version = "0.2.1"
 description = "Running along with Deep Learning from Scratch 3 (O'Reilly Japan, Koki Satito)"
 readme = "README.md"
 authors = [{ name = "k20ku" }]

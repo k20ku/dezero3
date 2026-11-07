@@ -5,6 +5,10 @@ import dezero.functions as F
 import sympy as sy
 import heapq
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 FuncTable = dict[type[Function], Callable[..., sy.Expr]]
 SYMPY: FuncTable = {
     F.Square: lambda f, x: x**2,
@@ -28,7 +32,7 @@ def symbol_leaf(v: Variable):
         if v.data.ndim <= 1:
             name = f"{v.data}"
         else:
-            name = f"[: {v.dtype}{v.shape}]"
+            name = sy.latex(sy.Matrix(v.data))
     return sy.Symbol(name)
 
 
@@ -55,6 +59,7 @@ def to_expr(output: Variable, functable: FuncTable = {}):
     # pushs greater generation first
     seen, vars = set[int](), list[Variable]()
     heap = [(-output.generation, id(output), output)]
+    logger.debug("start cmp-graph traversing")
     while heap:
         _, _, v = heapq.heappop(heap)
         if id(v) in seen:
@@ -67,6 +72,7 @@ def to_expr(output: Variable, functable: FuncTable = {}):
 
     expr: dict[int, sy.Expr] = {}
     # pops lesser generation first
+    logger.debug("strat to construct symbols")
     for v in reversed(vars):
         f = v.creator
         if f is None:
@@ -90,4 +96,7 @@ def to_latex(v: Variable, functable: FuncTable = {}) -> str:
         ValueError: functable contains a callable value.
         TypeError: functable's values contains a function does not return sympy.Expr
     """
-    return sy.latex(to_expr(v, functable))
+    logger.debug("start to convert to expr")
+    e = to_expr(v, functable)
+    logger.debug("to latex")
+    return sy.latex(e)

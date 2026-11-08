@@ -6,7 +6,7 @@ import weakref
 from abc import ABC
 from collections.abc import Generator, Sequence
 from itertools import count
-from typing import Any, Generic, TypeVar, cast, overload, override
+from typing import Any, Generic, Self, TypeVar, cast, overload, override
 
 import numpy as np
 
@@ -18,6 +18,19 @@ ndarray = xp.ndarray
 type DType = xp.float64
 dtype = xp.float64
 
+
+from typing import SupportsIndex, TypeAlias
+
+Shape: TypeAlias = tuple[int, ...]
+AnyShape: TypeAlias = tuple[Any, ...]
+
+# Anything that can be coerced to a shape tuple
+ShapeLike: TypeAlias = SupportsIndex | Sequence[SupportsIndex]
+
+
+class Config:
+    enable_backprop = True
+    detect_anomaly = False
 
 # Helper
 def asarray(x: Any) -> NDArray:
@@ -33,7 +46,10 @@ def asarray(x: Any) -> NDArray:
     if isinstance(x, Variable):
         return x.data
     try:
-        x: NDArray = xp.asarray_chkfinite(x)
+        if not Config.detect_anomaly:
+            x: NDArray = xp.asarray(x)
+        else:
+            x: NDArray = xp.asarray_chkfinite(x)
     except ValueError:
         raise ValueError("array must not contain infs or NaNs")
     if not np.issubdtype(x.dtype, np.number):
@@ -49,9 +65,6 @@ def to_str(obj) -> str:
     fields_str = ", ".join(fields)
     return f"{type(obj)}{{{fields_str}}}"
 
-
-class Config:
-    enable_backprop = True
 
 
 @contextlib.contextmanager
@@ -200,7 +213,20 @@ class Variable:
 
     @override
     def __repr__(self):
-        return to_str(self)
+        data_repr = repr(self.data).replace('\n', '\n' + ' '*9)
+        grad_repr = repr(self.grad).replace('\n', '\n' + ' '*9)
+        fields = []
+        for key, val in vars(self).items():
+            if key in ("data", "grad"):
+                continue
+            val_repr = repr(val)
+            fields.append(f"{key}={val_repr}")
+        fields_str = ",\n    ".join(fields)
+        return f"""{type(self)}{{
+    data={data_repr},
+    grad={grad_repr},
+    {fields_str}
+}}"""
 
     def __add__(self, other: Any):
         return add(self, other)
@@ -233,14 +259,34 @@ class Variable:
         return pow(self, c)
 
     @overload
-    def reshape(self, shape: Sequence[int]) -> Variable: ...
-    def reshape(self, *shape: int):
+    def reshape(self, shape: ShapeLike | None, /) -> Self: ...
+    @overload
+    def reshape(self, /, *shape: SupportsIndex) -> Self: ...
+    def reshape(self, *shape: Any):
         import dezero.functions as F
 
         if len(shape) == 1 and isinstance(shape, Sequence):
             shape = shape[0]
 
         return F.reshape(self, shape)
+
+    @overload
+    def transpose(self, axes: ShapeLike | None, /) -> Self: ...
+    @overload
+    def transpose(self, /, *axes: SupportsIndex) -> Self: ...
+    def transpose(self, *axes: Any):
+        import dezero.functions as F
+
+        if len(axes) == 1 and isinstance(axes, Sequence):
+            axes = axes[0]
+        if axes == ():
+            return F.transpose(self)
+        return F.transpose(self, axes)
+
+    @property
+    def T(self):
+        return self.transpose()
+
 
 
 def variable(x: Any, name=None) -> Variable:

@@ -106,7 +106,6 @@ Implemented are
 
 In implementation,
 
-- Reshape
 - Softmax
 - NNW usage
 - Conv2d, Attention

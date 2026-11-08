@@ -4,10 +4,11 @@ import numpy as np
 from numpy import ndarray
 
 from dezero.core import Variable, as_variable, asarray
-from dezero.utils.grad import numerical_grad
 
 """ return value is Variable or its subclass"""
 Variable_T = TypeVar("Variable_T", bound=Variable)
+
+CallableV = Callable[..., Variable_T]
 
 
 def gradient_check(
@@ -62,6 +63,8 @@ def gradient_check(
     """
     x = as_variable(x)
     x.data = x.data.astype(np.float64)
+    from dezero.utils.grad import numerical_grad
+
     num_grad = numerical_grad(f, x, *args, **kwargs)
     y = f(x, *args, **kwargs)
     y.backward()

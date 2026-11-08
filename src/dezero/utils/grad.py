@@ -1,8 +1,9 @@
-from typing import Callable, TypeVar, Any
-
+from typing import TypeVar, Any
+from collections.abc import Callable
 import numpy as np
 
-from dezero.core import NDArray, Variable, asarray, as_variable
+from dezero.core import NDArray, Variable, asarray, as_variable, variable, xp
+from dezero.util import CallableV
 
 Variable_T = TypeVar("Variable_T", bound=Variable)
 
@@ -138,3 +139,27 @@ def _numerical_grad_nd_5pstencil(
         x[idx] = tmp_x
 
     return grad
+
+
+def dn(
+    f: CallableV[Variable_T], x: Variable_T, *args: Any, n: int = 1, **kwargs: Any
+) -> Variable:
+    y = f(x, *args, **kwargs)
+    y.name = "y"
+    if n <= 0:
+        return x
+    y.backward(create_graph=True)
+    for step in range(n - 1):
+        if x.grad is None:
+            break
+        gx = x.grad
+        x.cleargrad()
+        gx.backward(create_graph=True)
+
+    gx = x.grad
+    if gx is None:
+        gx = as_variable(xp.zeros_like(x.data))
+
+    gx.name = f"g^({n})x"
+
+    return gx

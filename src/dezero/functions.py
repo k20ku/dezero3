@@ -1,5 +1,6 @@
 from dezero.core import Function, Variable, variable, xp
 import dezero.core as dc
+from dezero.util import Variable_T
 
 Exp = dc.Exp
 Square = dc.Square
@@ -61,6 +62,23 @@ class Reshape(Function):
         return reshape(gy, self.x_shape)
 
 
+class Transpose(Function):
+    def __init__(self, axes: tuple[int] | None = None):
+        self.axes = axes
+
+    def forward(self, x):
+        y = xp.transpose(x, self.axes)
+        return y
+
+    def backward(self, gy):
+        # transpose needs information on x.ndim. however
+        if self.axes is None:
+            return transpose(gy)
+        axes_inv = tuple(xp.argsort(self.axes))
+        gx = transpose(gy, axes=axes_inv)
+        return gx
+
+
 def sin(x: Variable) -> Variable:
     return Sin()(x)
 
@@ -77,3 +95,7 @@ def reshape(x: Variable, shape: int | tuple[int]) -> Variable:
     if x.shape == shape:
         return variable(x)
     return Reshape(shape)(x)
+
+
+def transpose(x: Variable, axes: None | tuple[int] = None) -> Variable:
+    return Transpose(axes)(x)

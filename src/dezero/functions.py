@@ -1,4 +1,4 @@
-from dezero.core import Function, Variable, xp
+from dezero.core import Function, Variable, variable, xp
 import dezero.core as dc
 
 Exp = dc.Exp
@@ -47,6 +47,20 @@ class Tanh(Function):
         return gy * (1 - y**2)
 
 
+class Reshape(Function):
+    def __init__(self, shape: int | tuple[int]):
+        self.shape = shape
+        self.x_shape = ()
+
+    def forward(self, x):
+        self.x_shape = x.shape
+        y = xp.reshape(x, self.shape)
+        return y
+
+    def backward(self, gy):
+        return reshape(gy, self.x_shape)
+
+
 def sin(x: Variable) -> Variable:
     return Sin()(x)
 
@@ -57,3 +71,9 @@ def cos(x: Variable) -> Variable:
 
 def tanh(x: Variable) -> Variable:
     return Tanh()(x)
+
+
+def reshape(x: Variable, shape: int | tuple[int]) -> Variable:
+    if x.shape == shape:
+        return variable(x)
+    return Reshape(shape)(x)

@@ -4,9 +4,9 @@ import contextlib
 import heapq
 import weakref
 from abc import ABC
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from itertools import count
-from typing import Any, Generic, TypeVar, cast, override
+from typing import Any, Generic, TypeVar, cast, overload, override
 
 import numpy as np
 
@@ -231,6 +231,16 @@ class Variable:
 
     def __pow__(self, c: Any):
         return pow(self, c)
+
+    @overload
+    def reshape(self, shape: Sequence[int]) -> Variable: ...
+    def reshape(self, *shape: int):
+        import dezero.functions as F
+
+        if len(shape) == 1 and isinstance(shape, Sequence):
+            shape = shape[0]
+
+        return F.reshape(self, shape)
 
 
 def variable(x: Any, name=None) -> Variable:

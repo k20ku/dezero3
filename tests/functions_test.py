@@ -3,6 +3,7 @@ import dezero.functions as F
 
 import numpy as np
 
+from dezero.util import gradient_check
 from dezero.utils.grad import numerical_grad
 
 
@@ -43,3 +44,8 @@ def test_tanh_numgrad():
     y.backward()
     assert x.grad is not None
     np.testing.assert_allclose(x.grad.data, ngrad)
+
+
+def test_reshape():
+    x = variable(np.random.randn(3 * 4))
+    gradient_check(lambda x: x.reshape(3, 4), x)

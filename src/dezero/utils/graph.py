@@ -1,11 +1,12 @@
 import heapq
-from pathlib import Path
+import os
 import tempfile
 import typing
-from dezero.core import Function, Variable
-import os
+from pathlib import Path
 
 import graphviz
+
+from dezero.core import Function, Variable
 
 _vcolor = "orange"
 _fcolor = "lightblue"

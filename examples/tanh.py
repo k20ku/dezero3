@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from dezero.core import variable, Variable
+import tqdm
+
 import dezero.functions as F
 import dezero.utils.graph as dg
-import tqdm
+from dezero.core import Variable, variable
 
 
 def dn(n: int = 0) -> Variable:

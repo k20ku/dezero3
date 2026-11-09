@@ -1,6 +1,7 @@
-from dezero.core import Function, Variable, variable, xp
 import dezero.core as dc
-from dezero.util import Variable_T
+import dezero.utils.array as darray
+from dezero.core import Function, Variable, Variable_T, variable
+from dezero.typing import NDArray, Shape, ShapeLike, xp
 
 Exp = dc.Exp
 Square = dc.Square
@@ -51,7 +52,6 @@ class Tanh(Function):
 class Reshape(Function):
     def __init__(self, shape: int | tuple[int]):
         self.shape = shape
-        self.x_shape = ()
 
     def forward(self, x):
         self.x_shape = x.shape
@@ -79,23 +79,85 @@ class Transpose(Function):
         return gx
 
 
-def sin(x: Variable) -> Variable:
+class Sum(Function):
+    def __init__(self, axis: None | ShapeLike, keepdims: bool):
+        self.axis = axis
+        self.keepdims = keepdims
+
+    def forward(self, x: NDArray):
+        self.x_shape = x.shape
+        y = xp.sum(x, axis=self.axis, keepdims=self.keepdims)
+        return y
+
+    def backward(self, gy: Variable_T):
+        gy = darray.reshape_for_sum_backward(gy, self.x_shape, self.axis, self.keepdims)
+        gx = broadcast_to(gy, self.x_shape)
+        return gx
+
+
+class BroadcastTo(Function):
+    def __init__(self, shape: Shape):
+        self.shape = shape
+
+    def forward(self, x: NDArray):
+        self.x_shape = x.shape
+        y = xp.broadcast_to(x, self.shape)
+        return y
+
+    def backward(self, gy):
+        gx = darray.sum_to(gy, self.x_shape)
+        return gx
+
+
+class SumTo(Function):
+    def __init__(self, shape: Shape):
+        self.shape = shape
+
+    def forward(self, x: NDArray):
+        self.x_shape = x.shape
+        y = darray.sum_to(x, self.shape)
+        return y
+
+    def backward(self, gy: Variable_T):
+        gx = broadcast_to(gy, self.x_shape)
+        return gx
+
+
+def sin(x: Variable_T) -> Variable_T:
     return Sin()(x)
 
 
-def cos(x: Variable) -> Variable:
+def cos(x: Variable_T) -> Variable_T:
     return Cos()(x)
 
 
-def tanh(x: Variable) -> Variable:
+def tanh(x: Variable_T) -> Variable_T:
     return Tanh()(x)
 
 
-def reshape(x: Variable, shape: int | tuple[int]) -> Variable:
+def reshape(x: Variable_T, shape: int | tuple[int]) -> Variable_T:
     if x.shape == shape:
-        return variable(x)
+        return x
     return Reshape(shape)(x)
 
 
-def transpose(x: Variable, axes: None | tuple[int] = None) -> Variable:
+def transpose(x: Variable_T, axes: None | tuple[int] = None) -> Variable_T:
     return Transpose(axes)(x)
+
+
+def sum(
+    x: Variable_T, axis: None | ShapeLike = None, keepdims: bool = False
+) -> Variable_T:
+    return Sum(axis, keepdims)(x)
+
+
+def broadcast_to(x: Variable_T, shape: Shape) -> Variable_T:
+    return BroadcastTo(shape)(x)
+
+
+def sum_to(x: Variable_T, shape: Shape) -> Variable_T:
+    """
+    Sum of elements in x in the shape of given shape.
+    sum function that can be designated returning shape
+    """
+    return SumTo(shape)(x)

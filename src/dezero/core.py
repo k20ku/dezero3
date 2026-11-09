@@ -6,26 +6,11 @@ import weakref
 from abc import ABC
 from collections.abc import Generator, Sequence
 from itertools import count
-from typing import Any, Generic, Self, TypeVar, cast, overload, override
+from typing import Any, Generic, Self, SupportsIndex, TypeVar, cast, overload, override
 
 import numpy as np
 
-xp = np
-
-type NDArray = xp.ndarray
-ndarray = xp.ndarray
-
-type DType = xp.float64
-dtype = xp.float64
-
-
-from typing import SupportsIndex, TypeAlias
-
-Shape: TypeAlias = tuple[int, ...]
-AnyShape: TypeAlias = tuple[Any, ...]
-
-# Anything that can be coerced to a shape tuple
-ShapeLike: TypeAlias = SupportsIndex | Sequence[SupportsIndex]
+from dezero.typing import NDArray, Shape, ShapeLike, dtype, ndarray, xp
 
 
 class Config:
@@ -93,7 +78,6 @@ def no_grad():
     return using_config("enable_backprop", False)
 
 
-type Variables = tuple[Variable, Variable, *tuple[Variable, ...]]
 
 
 # Variable
@@ -193,7 +177,7 @@ class Variable:
         self.grad = None
 
     @property
-    def shape(self):
+    def shape(self) -> Shape:
         return self.data.shape
 
     @property
@@ -287,11 +271,18 @@ class Variable:
     def T(self):
         return self.transpose()
 
+    def sum(self, axis: None | ShapeLike =None, keepdims: bool=False) -> Self:
+        import dezero.functions as F
+        return F.sum(self, axis, keepdims)
+
 
 
 def variable(x: Any, name=None) -> Variable:
     return Variable(x, name)
 
+
+Variable_T = TypeVar("Variable_T", bound=Variable)
+Variables_T = tuple[Variable_T, Variable_T, *tuple[Variable_T, ...]]
 
 # Abstract Function
 class Function(ABC):
@@ -307,7 +298,7 @@ class Function(ABC):
     outputs: tuple[weakref.ReferenceType[Variable], ...]
     generation: int
 
-    def __call__(self, *inputs: Variable):
+    def __call__(self, *inputs: Variable_T):
         """
         Args:
             inputs: Variables

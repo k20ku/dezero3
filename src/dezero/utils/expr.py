@@ -1,11 +1,11 @@
-from collections.abc import Callable
-from dezero.core import Function, Variable
-import dezero.core as dc
-import dezero.functions as F
-import sympy as sy
 import heapq
-
 import logging
+from collections.abc import Callable
+
+import sympy as sy
+
+import dezero.functions as F
+from dezero.core import Function, Variable
 
 logger = logging.getLogger(__name__)
 

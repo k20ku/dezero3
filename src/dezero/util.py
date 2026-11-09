@@ -1,4 +1,4 @@
-from typing import Callable, TypeVar, Any
+from typing import Any, Callable, TypeVar
 
 import numpy as np
 from numpy import ndarray

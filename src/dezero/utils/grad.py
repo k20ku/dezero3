@@ -1,8 +1,9 @@
-from typing import TypeVar, Any
 from collections.abc import Callable
+from typing import Any, TypeVar
+
 import numpy as np
 
-from dezero.core import NDArray, Variable, asarray, as_variable, variable, xp
+from dezero.core import NDArray, Variable, as_variable, asarray, variable, xp
 from dezero.util import CallableV
 
 Variable_T = TypeVar("Variable_T", bound=Variable)

@@ -1,9 +1,10 @@
+from collections.abc import Callable
+
 import numpy as np
 import pytest
 
-from collections.abc import Callable
-from dezero.core import NDArray, Variable, add, asarray, rdiv, exp, square, as_variables
-from dezero.util import gradient_check
+from dezero.core import add, as_variables, asarray, exp, rdiv, square
+from dezero.typing import NDArray
 from dezero.utils.grad import numerical_grad
 
 

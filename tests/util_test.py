@@ -1,10 +1,8 @@
 import numpy as np
 import pytest
 
-from dezero.core import Variable, add, div, exp, square, as_variable, as_variables
+from dezero.core import Variable, exp
 from dezero.util import gradient_check
-from dezero.utils.grad import numerical_grad
-from dezero.utils.array import sum_to
 
 
 def test_gradient_check():

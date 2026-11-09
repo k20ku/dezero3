@@ -3,6 +3,7 @@ import pytest
 
 from dezero.utils.array import sum_to
 
+
 @pytest.mark.parametrize(
         argnames=(
             "x", "shape", "want",

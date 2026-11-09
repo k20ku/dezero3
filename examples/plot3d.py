@@ -1,8 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from dezero.core import Variable
 import dezero.functions as F
+from dezero.core import Variable
 from dezero.utils.expr import to_latex
 
 

@@ -1,10 +1,9 @@
+import numpy as np
 import pytest
 
-from dezero.core import Variable, variable
 import dezero.functions as F
-
-import numpy as np
-
+from dezero.core import Variable, variable
+from dezero.typing import NDArray
 from dezero.util import CallableV, gradient_check
 from dezero.utils.grad import numerical_grad
 
@@ -62,5 +61,45 @@ def test_reshape():
     ],
 )
 def test_transpose(data, f: CallableV[Variable]):
+    x = variable(data)
+    gradient_check(f, x)
+
+
+@pytest.mark.parametrize(
+    argnames=("data", "f"),
+    argvalues=[
+        (np.random.randn(2, 3), lambda x: F.sum_to(x, shape=(2, 1))),
+        (np.random.randn(4, 2, 5), lambda x: F.sum_to(x, shape=(5,))),
+    ],
+)
+def test_sum_to(data: NDArray, f: CallableV[Variable]):
+    x = variable(data)
+    gradient_check(f, x)
+
+
+@pytest.mark.parametrize(
+    argnames=("data", "f"),
+    argvalues=[
+        (np.random.randn(5), lambda x: F.broadcast_to(x, shape=(2, 5))),
+        (np.random.randn(4, 2, 5), lambda x: F.broadcast_to(x, shape=(3, 4, 2, 5))),
+        (np.random.randn(4), lambda x: F.broadcast_to(x, shape=(4,))),
+    ],
+)
+def test_broadcast_to(data: NDArray, f: CallableV[Variable]):
+    x = variable(data)
+    gradient_check(f, x)
+
+
+@pytest.mark.parametrize(
+    argnames=("data", "f"),
+    argvalues=[
+        (np.random.randn(5), lambda x: x.sum()),
+        (np.random.randn(4, 1, 6, 7), lambda x: x.sum(axis=(-1, -2))),
+        (np.random.randn(5, 3), lambda x: x.sum(axis=1)),
+        (np.random.randn(5, 3), lambda x: x.sum(axis=-1)),
+        (np.random.randn(3, 3, 3, 3), lambda x: x.sum(axis=(2, 1))),
+    ],
+)
+def test_sum(data: NDArray, f: CallableV[Variable]):
     x = variable(data)
     gradient_check(f, x)

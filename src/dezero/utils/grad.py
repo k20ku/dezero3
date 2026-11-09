@@ -3,14 +3,14 @@ from typing import Any, TypeVar
 
 import numpy as np
 
-from dezero.core import NDArray, Variable, as_variable, asarray, variable, xp
+from dezero.core import NDArray, Variable, as_variable, asarray, xp
 from dezero.util import CallableV
 
 Variable_T = TypeVar("Variable_T", bound=Variable)
 
 
 def numerical_grad(
-    f: Callable[..., Variable_T],
+    f: Callable[..., Variable],
     x: NDArray | Variable,
     *args: Any,
     eps: float = 1e-5,
@@ -61,7 +61,7 @@ def numerical_grad(
     # but this func's `f` is Variable to Variable (because we observe auto-grad!).
     # so translation is needed. And fnd is that.
     def fnd(xdata: NDArray, *args, **kwargs) -> NDArray:
-        y: Variable_T = f(as_variable(xdata), *args, **kwargs)
+        y: Variable = f(as_variable(xdata), *args, **kwargs)
         return y.data
 
     if enable5p:
@@ -142,9 +142,7 @@ def _numerical_grad_nd_5pstencil(
     return grad
 
 
-def dn(
-    f: CallableV[Variable_T], x: Variable_T, *args: Any, n: int = 1, **kwargs: Any
-) -> Variable:
+def dn(f: CallableV, x: Variable, *args: Any, n: int = 1, **kwargs: Any) -> Variable:
     y = f(x, *args, **kwargs)
     y.name = "y"
     if n <= 0:

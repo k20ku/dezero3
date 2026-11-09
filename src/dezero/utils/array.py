@@ -1,7 +1,7 @@
 from collections.abc import Sequence
-from typing import SupportsIndex, overload
+from typing import overload
 
-from dezero.core import Variable, Variable_T, as_variable
+from dezero.core import Variable, as_variable
 from dezero.typing import NDArray, Shape, ShapeLike
 
 
@@ -37,8 +37,8 @@ def reshape_for_sum_backward(
 ) -> NDArray: ...
 @overload
 def reshape_for_sum_backward(
-    gy: Variable_T, x_shape: Shape, axis, keepdims: bool
-) -> Variable_T: ...
+    gy: Variable, x_shape: Shape, axis, keepdims: bool
+) -> Variable: ...
 def reshape_for_sum_backward(
     gy: NDArray | Variable, x_shape: Shape, axis: None | ShapeLike, keepdims: bool
 ):

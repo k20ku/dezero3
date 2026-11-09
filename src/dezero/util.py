@@ -8,11 +8,11 @@ from dezero.core import Variable, as_variable, asarray
 """ return value is Variable or its subclass"""
 Variable_T = TypeVar("Variable_T", bound=Variable)
 
-CallableV = Callable[..., Variable_T]
+type CallableV = Callable[..., Variable]
 
 
 def gradient_check(
-    f: Callable[..., Variable_T],
+    f: Callable[..., Variable],
     x: ndarray | Variable,
     *args: Any,
     rtol: float = 1e-4,

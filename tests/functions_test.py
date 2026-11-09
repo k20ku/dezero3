@@ -60,7 +60,7 @@ def test_reshape():
         (np.random.randn(3, 4, 5), lambda x: x.transpose(2, 0, 1)),
     ],
 )
-def test_transpose(data, f: CallableV[Variable]):
+def test_transpose(data, f: CallableV):
     x = variable(data)
     gradient_check(f, x)
 
@@ -72,7 +72,7 @@ def test_transpose(data, f: CallableV[Variable]):
         (np.random.randn(4, 2, 5), lambda x: F.sum_to(x, shape=(5,))),
     ],
 )
-def test_sum_to(data: NDArray, f: CallableV[Variable]):
+def test_sum_to(data: NDArray, f: CallableV):
     x = variable(data)
     gradient_check(f, x)
 
@@ -85,7 +85,7 @@ def test_sum_to(data: NDArray, f: CallableV[Variable]):
         (np.random.randn(4), lambda x: F.broadcast_to(x, shape=(4,))),
     ],
 )
-def test_broadcast_to(data: NDArray, f: CallableV[Variable]):
+def test_broadcast_to(data: NDArray, f: CallableV):
     x = variable(data)
     gradient_check(f, x)
 
@@ -100,6 +100,6 @@ def test_broadcast_to(data: NDArray, f: CallableV[Variable]):
         (np.random.randn(3, 3, 3, 3), lambda x: x.sum(axis=(2, 1))),
     ],
 )
-def test_sum(data: NDArray, f: CallableV[Variable]):
+def test_sum(data: NDArray, f: CallableV):
     x = variable(data)
     gradient_check(f, x)

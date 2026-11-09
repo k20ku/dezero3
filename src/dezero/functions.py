@@ -1,6 +1,6 @@
 import dezero.core as dc
 import dezero.utils.array as darray
-from dezero.core import Function, Variable, Variable_T, variable
+from dezero.core import Function, Variable
 from dezero.typing import NDArray, Shape, ShapeLike, xp
 
 Exp = dc.Exp
@@ -89,7 +89,7 @@ class Sum(Function):
         y = xp.sum(x, axis=self.axis, keepdims=self.keepdims)
         return y
 
-    def backward(self, gy: Variable_T):
+    def backward(self, gy: Variable):
         gy = darray.reshape_for_sum_backward(gy, self.x_shape, self.axis, self.keepdims)
         gx = broadcast_to(gy, self.x_shape)
         return gx
@@ -118,44 +118,42 @@ class SumTo(Function):
         y = darray.sum_to(x, self.shape)
         return y
 
-    def backward(self, gy: Variable_T):
+    def backward(self, gy: Variable):
         gx = broadcast_to(gy, self.x_shape)
         return gx
 
 
-def sin(x: Variable_T) -> Variable_T:
+def sin(x: Variable) -> Variable:
     return Sin()(x)
 
 
-def cos(x: Variable_T) -> Variable_T:
+def cos(x: Variable) -> Variable:
     return Cos()(x)
 
 
-def tanh(x: Variable_T) -> Variable_T:
+def tanh(x: Variable) -> Variable:
     return Tanh()(x)
 
 
-def reshape(x: Variable_T, shape: int | tuple[int]) -> Variable_T:
+def reshape(x: Variable, shape: int | tuple[int]) -> Variable:
     if x.shape == shape:
         return x
     return Reshape(shape)(x)
 
 
-def transpose(x: Variable_T, axes: None | tuple[int] = None) -> Variable_T:
+def transpose(x: Variable, axes: None | tuple[int] = None) -> Variable:
     return Transpose(axes)(x)
 
 
-def sum(
-    x: Variable_T, axis: None | ShapeLike = None, keepdims: bool = False
-) -> Variable_T:
+def sum(x: Variable, axis: None | ShapeLike = None, keepdims: bool = False) -> Variable:
     return Sum(axis, keepdims)(x)
 
 
-def broadcast_to(x: Variable_T, shape: Shape) -> Variable_T:
+def broadcast_to(x: Variable, shape: Shape) -> Variable:
     return BroadcastTo(shape)(x)
 
 
-def sum_to(x: Variable_T, shape: Shape) -> Variable_T:
+def sum_to(x: Variable, shape: Shape) -> Variable:
     """
     Sum of elements in x in the shape of given shape.
     sum function that can be designated returning shape

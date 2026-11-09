@@ -6,11 +6,11 @@ import weakref
 from abc import ABC
 from collections.abc import Generator, Sequence
 from itertools import count
-from typing import Any, Generic, Self, SupportsIndex, TypeVar, cast, overload, override
+from typing import Any, Self, SupportsIndex, TypeVar, overload, override
 
 import numpy as np
 
-from dezero.typing import NDArray, Shape, ShapeLike, dtype, ndarray, xp
+from dezero.typing import NDArray, Shape, ShapeLike, dtype, xp
 
 
 class Config:
@@ -243,9 +243,9 @@ class Variable:
         return pow(self, c)
 
     @overload
-    def reshape(self, shape: ShapeLike | None, /) -> Self: ...
+    def reshape(self, shape: ShapeLike | None, /) -> Variable: ...
     @overload
-    def reshape(self, /, *shape: SupportsIndex) -> Self: ...
+    def reshape(self, /, *shape: SupportsIndex) -> Variable: ...
     def reshape(self, *shape: Any):
         import dezero.functions as F
 
@@ -255,9 +255,9 @@ class Variable:
         return F.reshape(self, shape)
 
     @overload
-    def transpose(self, axes: ShapeLike | None, /) -> Self: ...
+    def transpose(self, axes: ShapeLike | None, /) -> Variable: ...
     @overload
-    def transpose(self, /, *axes: SupportsIndex) -> Self: ...
+    def transpose(self, /, *axes: SupportsIndex) -> Variable: ...
     def transpose(self, *axes: Any):
         import dezero.functions as F
 
@@ -271,7 +271,7 @@ class Variable:
     def T(self):
         return self.transpose()
 
-    def sum(self, axis: None | ShapeLike =None, keepdims: bool=False) -> Self:
+    def sum(self, axis: None | ShapeLike =None, keepdims: bool=False) -> Variable:
         import dezero.functions as F
         return F.sum(self, axis, keepdims)
 
@@ -279,10 +279,6 @@ class Variable:
 
 def variable(x: Any, name=None) -> Variable:
     return Variable(x, name)
-
-
-Variable_T = TypeVar("Variable_T", bound=Variable)
-Variables_T = tuple[Variable_T, Variable_T, *tuple[Variable_T, ...]]
 
 # Abstract Function
 class Function(ABC):
@@ -298,7 +294,7 @@ class Function(ABC):
     outputs: tuple[weakref.ReferenceType[Variable], ...]
     generation: int
 
-    def __call__(self, *inputs: Variable_T):
+    def __call__(self, *inputs: Variable):
         """
         Args:
             inputs: Variables
@@ -347,8 +343,8 @@ class Function(ABC):
     def backward(self, gy) -> Any: ...
 
 
-def as_variable(obj: Any) -> Variable:
-    if isinstance(obj, Variable):
+def as_variable(obj: Any, cls=Variable) -> Variable:
+    if isinstance(obj, cls):
         return obj
     return Variable(obj)
 
@@ -417,10 +413,17 @@ class Neg(Function):
 
 
 class Sub(Function):
-    def forward(self, x0, x1):
+    def forward(self, x0: NDArray, x1: NDArray):
+        self.x0_shape = x0.shape
+        self.x1_shape = x1.shape
         return x0 - x1
 
-    def backward(self, gy):
+    def backward(self, gy: Variable):
+        gx0 = gy
+        gx1 = -gy
+        if self.x0_shape != self.x1_shape:
+            import dezero.functions as F
+
         return gy, -gy
 
 
@@ -494,6 +497,9 @@ def rdiv(x0: Variable, x1: Any) -> Variable:
     _x1 = as_variable(x1)
     return Div()(_x1, x0)
 
-
 def pow(x: Variable, c: Any) -> Variable:
     return Pow(c)(x)
+
+
+class Parameter(Variable):
+    pass

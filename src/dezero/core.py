@@ -333,6 +333,7 @@ class Function(ABC):
     def __str__(self):
         return to_str(self)
 
+    @overload
     def forward(self, x) -> Any: ...
 
     """
@@ -343,8 +344,8 @@ class Function(ABC):
     def backward(self, gy) -> Any: ...
 
 
-def as_variable(obj: Any, cls=Variable) -> Variable:
-    if isinstance(obj, cls):
+def as_variable(obj: Any) -> Variable:
+    if isinstance(obj, Variable):
         return obj
     return Variable(obj)
 
@@ -386,11 +387,19 @@ class Exp(Function):
 
 class Add(Function):
     def forward(self, x0, x1):
+        self.x0_shape = x0.shape
+        self.x1_shape = x1.shape
         y = x0 + x1
         return y
 
     def backward(self, gy):
-        return gy, gy
+        gx0 = gy
+        gx1 = gy
+        if self.x0_shape != self.x1_shape:
+            import dezero.functions as F
+            gx0 = F.sum_to(gx0, self.x0_shape)
+            gx1 = F.sum_to(gx1, self.x1_shape)
+        return gx0, gx1
 
 
 class Mul(Function):
@@ -398,10 +407,17 @@ class Mul(Function):
         y = x0 * x1
         return y
 
-    def backward(self, gy):
-        # y = x0 * x1 => dy/dx0 = x1, dy/dx1 = x0
+    def backward(self, gy: Variable):
         x0, x1 = self.inputs
-        return gy * x1, gy * x0
+        # y = x0 * x1 => dy/dx0 = x1, dy/dx1 = x0
+        gy0 = gy * x1
+        gy1 = gy * x0
+        if x0.shape != x1.shape:
+            import dezero.functions as F
+            gy0 = F.sum_to(gy0, x0.shape)
+            gy1 = F.sum_to(gy1, x1.shape)
+
+        return gy0, gy1
 
 
 class Neg(Function):
@@ -423,8 +439,10 @@ class Sub(Function):
         gx1 = -gy
         if self.x0_shape != self.x1_shape:
             import dezero.functions as F
+            gx0 = F.sum_to(gx0, self.x0_shape)
+            gx1 = F.sum_to(gx1, self.x1_shape)
 
-        return gy, -gy
+        return gx0, gx1
 
 
 class Div(Function):
@@ -434,9 +452,13 @@ class Div(Function):
 
     def backward(self, gy):
         x0, x1 = self.inputs
-        y0 = gy / x1
-        y1 = gy * (-x0 / x1**2)
-        return y0, y1
+        gy0 = gy / x1
+        gy1 = gy * (-x0 / x1**2)
+        if x0.shape != x1.shape:
+            import dezero.functions as F
+            gy0 = F.sum_to(gy0, x0.shape)
+            gy1 = F.sum_to(gy1, x1.shape)
+        return gy0, gy1
 
 
 class Pow(Function):

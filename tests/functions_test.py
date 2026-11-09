@@ -103,3 +103,22 @@ def test_broadcast_to(data: NDArray, f: CallableV):
 def test_sum(data: NDArray, f: CallableV):
     x = variable(data)
     gradient_check(f, x)
+
+
+@pytest.mark.parametrize(
+    argnames=("data0", "data1", "f"),
+    argvalues=[
+        (np.random.randn(1), np.random.randn(4), lambda x, y: x + y),
+        (np.random.randn(2, 2), np.random.randn(2), lambda x, y: x - y),
+        (np.random.randn(3), np.random.randn(), lambda x, y: x * y),
+        (np.random.randn(2, 1), np.random.randn(), lambda x, y: x * y),
+    ],
+    ids=["add", "sub", "mul", "div"],
+)
+def test_broadcasting(data0: NDArray, data1: NDArray, f: CallableV):
+    x0 = variable(data0)
+    x1 = variable(data1)
+    gradient_check(f, x1, x0)
+    x0.cleargrad()
+    x1.cleargrad()
+    gradient_check(f, x0, x1)

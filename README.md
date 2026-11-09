@@ -103,6 +103,7 @@ Implemented are
 - Add / multiple inputs
 - computation graph traversal that enables drawing
     ![goldstein-price function](./resources/goldstein_price.svg)
+- broadcasting, sum
 
 In implementation,
 
@@ -178,6 +179,23 @@ Original implementation uses `unittest`. However, this repository uses `pytest` 
 - mimimalized compared to `unittest` but has many features.
 - parametrize test
 
+Example:
+
+```python
+@pytest.mark.parametrize(
+    argnames=("data0", "data1", "f"),
+    argvalues=[
+        (np.random.randn(1), np.random.randn(4), lambda x, y: x + y),
+        (np.random.randn(2, 2), np.random.randn(2), lambda x, y: x - y),
+        (np.random.randn(3), np.random.randn(), lambda x, y: x * y),
+        (np.random.randn(2, 1), np.random.randn(), lambda x, y: x * y),
+    ],
+    ids=["add", "sub", "mul", "div"],
+)
+def test_broadcasting(data0: NDArray, data1: NDArray, f: CallableV):...
+
+```
+
 ### dynamic type and static type
 
 For feature introduction of `cupy`, static type alias and dynamic type(`ndarray`) is defined.
@@ -226,8 +244,8 @@ Writing LaTeX representation of cmp-graph by hand is a hard job, so this project
 
 ```py
 import dezero.functions as F
-from dezero.core import variable
-from dezero.utils.sympy import to_latex
+from dezero import variable
+from dezero.utils.expr import to_latex
 
 x0 = dc.variable(2, name="x0")
 x1 = dc.variable(3, name="x1")
@@ -246,3 +264,18 @@ to_latex(gx0) # '- 1.0 \\cdot 2.0 \\left(x_{0} + x_{1}\\right) e^{- 1.0 - \\sin{
 - $y = e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}}$
 
 - $\frac{\partial y}{\partial y} = - 1.0 \cdot 2.0 \left(x_{0} + x_{1}\right) e^{- 1.0 - \sin{\left(\left(x_{0} + x_{1}\right)^{2} \right)}} \cos{\left(\left(x_{0} + x_{1}\right)^{2} \right)}$
+
+### Support `SupportsIndex` and `Shape`, `@overload`
+
+Original dezero uses `tuple[int]`. This project utilize `SupportsIndex` respecting numpy API.
+
+```python
+class Variable:
+    ...
+    @overload
+    def reshape(self, shape: ShapeLike | None, /) -> Variable: ...
+    @overload
+    def reshape(self, /, *shape: SupportsIndex) -> Variable: ...
+    def reshape(self, *shape: Any):
+        # implementations
+```

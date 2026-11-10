@@ -50,7 +50,7 @@ class Tanh(Function):
 
 
 class Reshape(Function):
-    def __init__(self, shape: int | tuple[int]):
+    def __init__(self, shape: Shape):
         self.shape = shape
 
     def forward(self, x):
@@ -63,7 +63,7 @@ class Reshape(Function):
 
 
 class Transpose(Function):
-    def __init__(self, axes: tuple[int] | None = None):
+    def __init__(self, axes: Shape | None = None):
         self.axes = axes
 
     def forward(self, x):
@@ -122,6 +122,15 @@ class SumTo(Function):
         gx = broadcast_to(gy, self.x_shape)
         return gx
 
+class MatMul(Function):
+    def forward(self, x: NDArray, W):
+        y = x.dot(W)
+        return y
+    def backward(self, gy):
+        x, W = self.inputs
+        gx = matmul(gy, W.T)
+        gW = matmul(x.T, gy)
+        return gx, gW
 
 def sin(x: Variable) -> Variable:
     return Sin()(x)
@@ -159,3 +168,6 @@ def sum_to(x: Variable, shape: Shape) -> Variable:
     sum function that can be designated returning shape
     """
     return SumTo(shape)(x)
+
+def matmul(x: Variable, W: Variable) -> Variable:
+    return MatMul()(x, W)

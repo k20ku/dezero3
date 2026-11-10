@@ -5,23 +5,54 @@ from collections.abc import Callable
 import sympy as sy
 
 import dezero.functions as F
-from dezero.core import Function, Variable
+from dezero.core import Add, Div, Exp, Function, Mul, Neg, Pow, Square, Sub, Variable
 
 logger = logging.getLogger(__name__)
 
+
+class reshape(sy.Function):
+    def _latex(self, printer):
+        x, shape = (printer._print(a) for a in self.args)
+        return r"%s.\operatorname{reshape}\left( %s \right)" % (x, shape)
+
+
+class transpose(sy.Function):
+    def __new__(cls, *args, axes=None, **options):
+        if axes is None:
+            return super().__new__(cls, *args, **options)
+        return super().__new__(cls, *args, axes, **options)
+
+    def _latex(self, printer):
+        if len(self.args) == 1:
+            x = printer._print(self.args[0])
+            return r"%s^{\top}" % (x,)
+
+        x, axes = (printer._print(a) for a in self.args)
+        return r"%s.\operatorname{transpose}\left( %s \right)" % (x, axes)
+
+
+class broadcast(sy.Function):
+    def _latex(self, printer):
+        x, shape = (printer._print(a) for a in self.args)
+        return r"%s.\operatorname{broadcast}\left( %s \right)" % (x, shape)
+
+
 FuncTable = dict[type[Function], Callable[..., sy.Expr]]
 SYMPY: FuncTable = {
-    F.Square: lambda f, x: x**2,
-    F.Exp: lambda f, x: sy.exp(x),
+    Square: lambda f, x: x**2,
+    Exp: lambda f, x: sy.exp(x),
     # syecials
-    F.Add: lambda f, x, y: x + y,
-    F.Sub: lambda f, x, y: x - y,
-    F.Mul: lambda f, x, y: x * y,
-    F.Div: lambda f, x, y: x / y,
-    F.Neg: lambda f, x: -x,
-    F.Pow: lambda f, x: x**f.c,
+    Add: lambda f, x, y: x + y,
+    Sub: lambda f, x, y: x - y,
+    Mul: lambda f, x, y: x * y,
+    Div: lambda f, x, y: x / y,
+    Neg: lambda f, x: -x,
+    Pow: lambda f, x: x**f.c,
     F.Sin: lambda f, x: sy.sin(x),
     F.Cos: lambda f, x: sy.cos(x),
+    F.Reshape: lambda f, x: reshape(x, f.shape),
+    F.Transpose: lambda f, x: transpose(x, axes=f.axes),
+    F.BroadcastTo: lambda f, x: broadcast(x, f.shape),
 }
 
 

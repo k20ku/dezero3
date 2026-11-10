@@ -103,7 +103,7 @@ Implemented are
 - Add / multiple inputs
 - computation graph traversal that enables drawing
     ![goldstein-price function](./resources/goldstein_price.svg)
-- broadcasting, sum
+- broadcasting, sum, matrix multiplication
 
 In implementation,
 

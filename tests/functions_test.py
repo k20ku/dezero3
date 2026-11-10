@@ -122,3 +122,15 @@ def test_broadcasting(data0: NDArray, data1: NDArray, f: CallableV):
     x0.cleargrad()
     x1.cleargrad()
     gradient_check(f, x0, x1)
+
+
+def test_matmul():
+    data_x = np.random.randn(3, 4)
+    data_W = np.random.randn(4, 4)
+    x = variable(data_x)
+    W = variable(data_W)
+    f = lambda _x, _W: F.matmul(_x, _W)
+    gradient_check(lambda _x: F.matmul(_x, W), x)
+    x.cleargrad()
+    W.cleargrad()
+    gradient_check(lambda _W: F.matmul(x, _W), W)

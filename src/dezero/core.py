@@ -6,7 +6,7 @@ import weakref
 from abc import ABC
 from collections.abc import Generator, Sequence
 from itertools import count
-from typing import Any, Self, SupportsIndex, TypeVar, overload, override
+from typing import Any, SupportsIndex, overload, override
 
 import numpy as np
 

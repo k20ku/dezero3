@@ -50,6 +50,12 @@ You can run specific script file (i.e. `main.py`) on the REPL.
 %run main.py
 ```
 
+### Jupyter Lab
+
+```
+uv run --with jupyter jupyter lab
+```
+
 ### Tests Dezero
 
 To run all test,

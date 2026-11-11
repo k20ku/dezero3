@@ -17,6 +17,7 @@ class Config:
     enable_backprop = True
     detect_anomaly = False
 
+
 # Helper
 def asarray(x: Any) -> NDArray:
     """
@@ -51,7 +52,6 @@ def to_str(obj) -> str:
     return f"{type(obj)}{{{fields_str}}}"
 
 
-
 @contextlib.contextmanager
 def using_config(name: str, value):
     try:
@@ -76,8 +76,6 @@ def no_grad():
     ```
     """
     return using_config("enable_backprop", False)
-
-
 
 
 # Variable
@@ -197,8 +195,8 @@ class Variable:
 
     @override
     def __repr__(self):
-        data_repr = repr(self.data).replace('\n', '\n' + ' '*9)
-        grad_repr = repr(self.grad).replace('\n', '\n' + ' '*9)
+        data_repr = repr(self.data).replace("\n", "\n" + " " * 9)
+        grad_repr = repr(self.grad).replace("\n", "\n" + " " * 9)
         fields = []
         for key, val in vars(self).items():
             if key in ("data", "grad"):
@@ -271,14 +269,15 @@ class Variable:
     def T(self):
         return self.transpose()
 
-    def sum(self, axis: None | ShapeLike =None, keepdims: bool=False) -> Variable:
+    def sum(self, axis: None | ShapeLike = None, keepdims: bool = False) -> Variable:
         import dezero.functions as F
-        return F.sum(self, axis, keepdims)
 
+        return F.sum(self, axis, keepdims)
 
 
 def variable(x: Any, name=None) -> Variable:
     return Variable(x, name)
+
 
 # Abstract Function
 class Function(ABC):
@@ -397,6 +396,7 @@ class Add(Function):
         gx1 = gy
         if self.x0_shape != self.x1_shape:
             import dezero.functions as F
+
             gx0 = F.sum_to(gx0, self.x0_shape)
             gx1 = F.sum_to(gx1, self.x1_shape)
         return gx0, gx1
@@ -410,12 +410,13 @@ class Mul(Function):
     def backward(self, gy: Variable):
         x0, x1 = self.inputs
         # y = x0 * x1 => dy/dx0 = x1, dy/dx1 = x0
-        gy0 = gy * x1
-        gy1 = gy * x0
+        gx0 = gy * x1
+        gx1 = gy * x0
         if x0.shape != x1.shape:
             import dezero.functions as F
-            gy0 = F.sum_to(gy0, x0.shape)
-            gy1 = F.sum_to(gy1, x1.shape)
+
+            gy0 = F.sum_to(gx0, x0.shape)
+            gy1 = F.sum_to(gx1, x1.shape)
 
         return gy0, gy1
 
@@ -439,6 +440,7 @@ class Sub(Function):
         gx1 = -gy
         if self.x0_shape != self.x1_shape:
             import dezero.functions as F
+
             gx0 = F.sum_to(gx0, self.x0_shape)
             gx1 = F.sum_to(gx1, self.x1_shape)
 
@@ -452,13 +454,14 @@ class Div(Function):
 
     def backward(self, gy):
         x0, x1 = self.inputs
-        gy0 = gy / x1
-        gy1 = gy * (-x0 / x1**2)
+        gx0 = gy / x1
+        gx1 = gy * (-x0 / x1**2)
         if x0.shape != x1.shape:
             import dezero.functions as F
-            gy0 = F.sum_to(gy0, x0.shape)
-            gy1 = F.sum_to(gy1, x1.shape)
-        return gy0, gy1
+
+            gx0 = F.sum_to(gx0, x0.shape)
+            gx1 = F.sum_to(gx1, x1.shape)
+        return gx0, gx1
 
 
 class Pow(Function):
@@ -518,6 +521,7 @@ def div(x0: Variable, x1: Any) -> Variable:
 def rdiv(x0: Variable, x1: Any) -> Variable:
     _x1 = as_variable(x1)
     return Div()(_x1, x0)
+
 
 def pow(x: Variable, c: Any) -> Variable:
     return Pow(c)(x)

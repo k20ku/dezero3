@@ -171,3 +171,27 @@ def sum_to(x: Variable, shape: Shape) -> Variable:
 
 def matmul(x: Variable, W: Variable) -> Variable:
     return MatMul()(x, W)
+
+
+class MeanSquaredError(Function):
+    def forward(self, x0, x1):
+        diff = x0 - x1
+        N = len(diff) if diff.ndim > 0 else 1
+        y = (diff ** 2).sum() / N
+        return y
+    def backward(self, gy: Variable):
+        x0, x1 = self.inputs
+        diff = x0 - x1
+        gy = broadcast_to(gy, diff.shape)
+        N = len(diff) if diff.ndim > 0 else 1
+        gx0 = gy * diff * (2. / N)
+        gx1 = -gx0
+        if x0.shape != x1.shape:
+            gx0 = sum_to(gx0, x0.shape)
+            gx1 = sum_to(gx1, x1.shape)
+
+        return gx0, gx1
+
+def mean_squared_error(x0: Variable, x1: Variable) -> Variable:
+    return MeanSquaredError()(x0, x1)
+

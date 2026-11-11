@@ -129,8 +129,26 @@ def test_matmul():
     data_W = np.random.randn(4, 4)
     x = variable(data_x)
     W = variable(data_W)
-    f = lambda _x, _W: F.matmul(_x, _W)
     gradient_check(lambda _x: F.matmul(_x, W), x)
     x.cleargrad()
     W.cleargrad()
     gradient_check(lambda _W: F.matmul(x, _W), W)
+
+
+@pytest.mark.parametrize(
+    argnames=("data0", "data1"),
+    argvalues=[
+        (np.random.randn(5), np.random.rand(5)),
+        (np.random.randn(2, 2), np.random.rand(2)),
+        (np.random.randn(), np.random.rand()),
+    ],
+    ids=["normal", "broadcast", "ndim=0"],
+)
+def test_mean_squared_error(data0: NDArray, data1: NDArray):
+    x0 = variable(data0)
+    x1 = variable(data1)
+    f = F.mean_squared_error
+    gradient_check(f, x1, x0)
+    x0.cleargrad()
+    x1.cleargrad()
+    gradient_check(f, x0, x1)

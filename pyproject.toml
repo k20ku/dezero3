@@ -21,6 +21,7 @@ Repository = "https://github.com/k20ku/dezero3"
 [dependency-groups]
 dev = [
     "devtools>=0.12",
+    "ipykernel>=7.4.0",
     "ipython>=9.8",
     "mypy>=2.1",
     "pyqt6>=6.12.0",

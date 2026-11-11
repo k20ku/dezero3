@@ -1,11 +1,12 @@
 from pathlib import Path
 
 import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
 
-from dezero.core import variable
 import dezero.functions as F
-import matplotlib.pyplot as plt
+from dezero.core import variable
+
 
 def main():
     x = variable(np.linspace(-7, 7, 200))

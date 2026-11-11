@@ -4,23 +4,22 @@ import contextlib
 import heapq
 import weakref
 from abc import ABC
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from itertools import count
-from typing import Any, Generic, TypeVar, cast, override
+from typing import Any, SupportsIndex, overload, override
 
 import numpy as np
 
-xp = np
+from dezero.typing import NDArray, Shape, ShapeLike, dtype64, xp
 
-type NDArray = xp.ndarray
-ndarray = xp.ndarray
 
-type DType = xp.float64
-dtype = xp.float64
+class Config:
+    enable_backprop = True
+    detect_anomaly = False
 
 
 # Helper
-def asarray(x: Any) -> NDArray:
+def asarray(x: Any, dtype=dtype64) -> NDArray:
     """
     Args:
         x: A value tranformed into NDArray. This does not create new NDArray if x is NDArray or Variable
@@ -31,14 +30,17 @@ def asarray(x: Any) -> NDArray:
         TypeError: x's dtype is not subtype of xp.number
     """
     if isinstance(x, Variable):
-        return x.data
+        return x.data.astype(dtype=dtype)
     try:
-        x: NDArray = xp.asarray_chkfinite(x)
+        if not Config.detect_anomaly:
+            x: NDArray = xp.asarray(x)
+        else:
+            x: NDArray = xp.asarray_chkfinite(x)
     except ValueError:
         raise ValueError("array must not contain infs or NaNs")
-    if not np.issubdtype(x.dtype, np.number):
+    if not xp.issubdtype(x.dtype, np.number):
         raise TypeError(f"{x.dtype} is not allowed. Subclass of {np.number} allowed.")
-    return np.astype(x, dtype)
+    return xp.astype(x, dtype)
 
 
 def to_str(obj) -> str:
@@ -48,10 +50,6 @@ def to_str(obj) -> str:
         fields.append(f"{key}={val_repr}")
     fields_str = ", ".join(fields)
     return f"{type(obj)}{{{fields_str}}}"
-
-
-class Config:
-    enable_backprop = True
 
 
 @contextlib.contextmanager
@@ -78,9 +76,6 @@ def no_grad():
     ```
     """
     return using_config("enable_backprop", False)
-
-
-type Variables = tuple[Variable, Variable, *tuple[Variable, ...]]
 
 
 # Variable
@@ -180,7 +175,7 @@ class Variable:
         self.grad = None
 
     @property
-    def shape(self):
+    def shape(self) -> Shape:
         return self.data.shape
 
     @property
@@ -200,7 +195,20 @@ class Variable:
 
     @override
     def __repr__(self):
-        return to_str(self)
+        data_repr = repr(self.data).replace("\n", "\n" + " " * 9)
+        grad_repr = repr(self.grad).replace("\n", "\n" + " " * 9)
+        fields = []
+        for key, val in vars(self).items():
+            if key in ("data", "grad"):
+                continue
+            val_repr = repr(val)
+            fields.append(f"{key}={val_repr}")
+        fields_str = ",\n    ".join(fields)
+        return f"""{type(self)}{{
+    data={data_repr},
+    grad={grad_repr},
+    {fields_str}
+}}"""
 
     def __add__(self, other: Any):
         return add(self, other)
@@ -232,6 +240,40 @@ class Variable:
     def __pow__(self, c: Any):
         return pow(self, c)
 
+    @overload
+    def reshape(self, shape: ShapeLike | None, /) -> Variable: ...
+    @overload
+    def reshape(self, /, *shape: SupportsIndex) -> Variable: ...
+    def reshape(self, *shape: Any):
+        import dezero.functions as F
+
+        if len(shape) == 1 and isinstance(shape, Sequence):
+            shape = shape[0]
+
+        return F.reshape(self, shape)
+
+    @overload
+    def transpose(self, axes: ShapeLike | None, /) -> Variable: ...
+    @overload
+    def transpose(self, /, *axes: SupportsIndex) -> Variable: ...
+    def transpose(self, *axes: Any):
+        import dezero.functions as F
+
+        if len(axes) == 1 and isinstance(axes, Sequence):
+            axes = axes[0]
+        if axes == ():
+            return F.transpose(self)
+        return F.transpose(self, axes)
+
+    @property
+    def T(self):
+        return self.transpose()
+
+    def sum(self, axis: None | ShapeLike = None, keepdims: bool = False) -> Variable:
+        import dezero.functions as F
+
+        return F.sum(self, axis, keepdims)
+
 
 def variable(x: Any, name=None) -> Variable:
     return Variable(x, name)
@@ -251,10 +293,10 @@ class Function(ABC):
     outputs: tuple[weakref.ReferenceType[Variable], ...]
     generation: int
 
-    def __call__(self, *inputs: Variable):
+    def __call__(self, *inputs: Variable | NDArray):
         """
         Args:
-            inputs: Variables
+            inputs: Variables or NDArray or array-like
 
         Returns:
             Variable if the function returns single output, else returns tuple of Variable
@@ -262,6 +304,7 @@ class Function(ABC):
         Intentionally weakly typed because its return type depends on the runtime subclass implementation.
         Public APIs recover precise types with cast or wrapper functions.
         """
+        inputs = tuple(as_variables(*inputs))
         xs = tuple(input.data for input in inputs)
         ys = self.forward(*xs)
 
@@ -290,6 +333,7 @@ class Function(ABC):
     def __str__(self):
         return to_str(self)
 
+    @overload
     def forward(self, x) -> Any: ...
 
     """
@@ -343,11 +387,20 @@ class Exp(Function):
 
 class Add(Function):
     def forward(self, x0, x1):
+        self.x0_shape = x0.shape
+        self.x1_shape = x1.shape
         y = x0 + x1
         return y
 
     def backward(self, gy):
-        return gy, gy
+        gx0 = gy
+        gx1 = gy
+        if self.x0_shape != self.x1_shape:
+            import dezero.functions as F
+
+            gx0 = F.sum_to(gx0, self.x0_shape)
+            gx1 = F.sum_to(gx1, self.x1_shape)
+        return gx0, gx1
 
 
 class Mul(Function):
@@ -355,10 +408,18 @@ class Mul(Function):
         y = x0 * x1
         return y
 
-    def backward(self, gy):
-        # y = x0 * x1 => dy/dx0 = x1, dy/dx1 = x0
+    def backward(self, gy: Variable):
         x0, x1 = self.inputs
-        return gy * x1, gy * x0
+        # y = x0 * x1 => dy/dx0 = x1, dy/dx1 = x0
+        gx0 = gy * x1
+        gx1 = gy * x0
+        if x0.shape != x1.shape:
+            import dezero.functions as F
+
+            gx0 = F.sum_to(gx0, x0.shape)
+            gx1 = F.sum_to(gx1, x1.shape)
+
+        return gx0, gx1
 
 
 class Neg(Function):
@@ -370,11 +431,21 @@ class Neg(Function):
 
 
 class Sub(Function):
-    def forward(self, x0, x1):
+    def forward(self, x0: NDArray, x1: NDArray):
+        self.x0_shape = x0.shape
+        self.x1_shape = x1.shape
         return x0 - x1
 
-    def backward(self, gy):
-        return gy, -gy
+    def backward(self, gy: Variable):
+        gx0 = gy
+        gx1 = -gy
+        if self.x0_shape != self.x1_shape:
+            import dezero.functions as F
+
+            gx0 = F.sum_to(gx0, self.x0_shape)
+            gx1 = F.sum_to(gx1, self.x1_shape)
+
+        return gx0, gx1
 
 
 class Div(Function):
@@ -384,9 +455,14 @@ class Div(Function):
 
     def backward(self, gy):
         x0, x1 = self.inputs
-        y0 = gy / x1
-        y1 = gy * (-x0 / x1**2)
-        return y0, y1
+        gx0 = gy / x1
+        gx1 = gy * (-x0 / x1**2)
+        if x0.shape != x1.shape:
+            import dezero.functions as F
+
+            gx0 = F.sum_to(gx0, x0.shape)
+            gx1 = F.sum_to(gx1, x1.shape)
+        return gx0, gx1
 
 
 class Pow(Function):
@@ -450,3 +526,7 @@ def rdiv(x0: Variable, x1: Any) -> Variable:
 
 def pow(x: Variable, c: Any) -> Variable:
     return Pow(c)(x)
+
+
+class Parameter(Variable):
+    pass

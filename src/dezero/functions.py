@@ -1,3 +1,5 @@
+from typing import overload
+
 import dezero.core as dc
 import dezero.utils.array as darray
 from dezero.core import Function, Variable
@@ -122,15 +124,18 @@ class SumTo(Function):
         gx = broadcast_to(gy, self.x_shape)
         return gx
 
+
 class MatMul(Function):
     def forward(self, x: NDArray, W):
         y = x.dot(W)
         return y
+
     def backward(self, gy):
         x, W = self.inputs
         gx = matmul(gy, W.T)
         gW = matmul(x.T, gy)
         return gx, gW
+
 
 def sin(x: Variable) -> Variable:
     return Sin()(x)
@@ -169,22 +174,24 @@ def sum_to(x: Variable, shape: Shape) -> Variable:
     """
     return SumTo(shape)(x)
 
+
 def matmul(x: Variable, W: Variable) -> Variable:
     return MatMul()(x, W)
 
 
 class MeanSquaredError(Function):
-    def forward(self, x0, x1):
+    def forward(self, x0: NDArray, x1: NDArray):
         diff = x0 - x1
         N = len(diff) if diff.ndim > 0 else 1
-        y = (diff ** 2).sum() / N
+        y = (diff**2).sum() / N
         return y
+
     def backward(self, gy: Variable):
         x0, x1 = self.inputs
         diff = x0 - x1
         gy = broadcast_to(gy, diff.shape)
         N = len(diff) if diff.ndim > 0 else 1
-        gx0 = gy * diff * (2. / N)
+        gx0 = gy * diff * (2.0 / N)
         gx1 = -gx0
         if x0.shape != x1.shape:
             gx0 = sum_to(gx0, x0.shape)
@@ -192,6 +199,27 @@ class MeanSquaredError(Function):
 
         return gx0, gx1
 
+
 def mean_squared_error(x0: Variable, x1: Variable) -> Variable:
     return MeanSquaredError()(x0, x1)
 
+
+class Linear(Function):
+    def forward(self, x: NDArray, W: NDArray, b=None):
+        y = x.dot(W)
+        if b is not None:
+            y += b
+        return y
+
+    def backward(self, gy: Variable):
+        x, W, b = (*self.inputs, None) if len(self.inputs) == 2 else self.inputs
+        gx = matmul(gy, W.T)
+        gW = matmul(x.T, gy)
+        if b is None:
+            return gx, gW
+        gb = sum_to(gy, b.shape)
+        return gx, gW, gb
+
+
+def linear(x: Variable, W: Variable, b: Variable | None = None) -> Variable:
+    return Linear()(x, W, b) if b else Linear()(x, W)

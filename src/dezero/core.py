@@ -415,10 +415,10 @@ class Mul(Function):
         if x0.shape != x1.shape:
             import dezero.functions as F
 
-            gy0 = F.sum_to(gx0, x0.shape)
-            gy1 = F.sum_to(gx1, x1.shape)
+            gx0 = F.sum_to(gx0, x0.shape)
+            gx1 = F.sum_to(gx1, x1.shape)
 
-        return gy0, gy1
+        return gx0, gx1
 
 
 class Neg(Function):

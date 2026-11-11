@@ -1,8 +1,10 @@
+from functools import partial
+
 import numpy as np
 import pytest
 
 import dezero.functions as F
-from dezero.core import Variable, variable
+from dezero.core import Variable, as_variables, variable
 from dezero.typing import NDArray
 from dezero.util import CallableV, gradient_check
 from dezero.utils.grad import numerical_grad
@@ -152,3 +154,22 @@ def test_mean_squared_error(data0: NDArray, data1: NDArray):
     x0.cleargrad()
     x1.cleargrad()
     gradient_check(f, x0, x1)
+
+
+def cleargrads(*args: Variable | None):
+    for arg in args:
+        if arg:
+            arg.cleargrad()
+
+
+def test_linear():
+    datax, dataW, datab = np.random.randn(1, 2), np.random.randn(2, 2), None
+    x, W = as_variables(datax, dataW)
+    b = None if datab is None else variable(datab)
+    gradient_check(partial(F.linear, W=W, b=b), x)
+    cleargrads(x, W, b)
+    gradient_check(partial(F.linear, x, b=b), W)
+    cleargrads(x, W, b)
+    if b:
+        gradient_check(partial(F.linear, x, W=W), b)
+        cleargrads(x, W, b)

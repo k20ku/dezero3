@@ -10,7 +10,7 @@ from typing import Any, Self, SupportsIndex, TypeVar, overload, override
 
 import numpy as np
 
-from dezero.typing import NDArray, Shape, ShapeLike, dtype, xp
+from dezero.typing import NDArray, Shape, ShapeLike, dtype64, xp
 
 
 class Config:
@@ -19,7 +19,7 @@ class Config:
 
 
 # Helper
-def asarray(x: Any) -> NDArray:
+def asarray(x: Any, dtype=dtype64) -> NDArray:
     """
     Args:
         x: A value tranformed into NDArray. This does not create new NDArray if x is NDArray or Variable
@@ -30,7 +30,7 @@ def asarray(x: Any) -> NDArray:
         TypeError: x's dtype is not subtype of xp.number
     """
     if isinstance(x, Variable):
-        return x.data
+        return x.data.astype(dtype=dtype)
     try:
         if not Config.detect_anomaly:
             x: NDArray = xp.asarray(x)
@@ -38,9 +38,9 @@ def asarray(x: Any) -> NDArray:
             x: NDArray = xp.asarray_chkfinite(x)
     except ValueError:
         raise ValueError("array must not contain infs or NaNs")
-    if not np.issubdtype(x.dtype, np.number):
+    if not xp.issubdtype(x.dtype, np.number):
         raise TypeError(f"{x.dtype} is not allowed. Subclass of {np.number} allowed.")
-    return np.astype(x, dtype)
+    return xp.astype(x, dtype)
 
 
 def to_str(obj) -> str:

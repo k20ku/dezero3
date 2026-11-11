@@ -223,3 +223,21 @@ class Linear(Function):
 
 def linear(x: Variable, W: Variable, b: Variable | None = None) -> Variable:
     return Linear()(x, W, b) if b else Linear()(x, W)
+
+
+class Sigmoid(Function):
+    def forward(self, x: NDArray):
+        y = 1 / (1 + xp.exp(-x))
+        return y
+
+    def backward(self, gy: Variable):
+        (y,) = self.outputs
+        y = y()
+        if y is None:
+            raise AssertionError("sigmoid output must not be None")
+        gx = gy * (1 - y) * y
+        return gx
+
+
+def sigmoid(x: Variable) -> Variable:
+    return Sigmoid()(x)

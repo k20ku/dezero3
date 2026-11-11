@@ -162,14 +162,47 @@ def cleargrads(*args: Variable | None):
             arg.cleargrad()
 
 
-def test_linear():
-    datax, dataW, datab = np.random.randn(1, 2), np.random.randn(2, 2), None
-    x, W = as_variables(datax, dataW)
-    b = None if datab is None else variable(datab)
+@pytest.mark.parametrize(
+    "x, W, b",
+    [
+        (np.random.randn(1, 2), np.random.randn(2, 2), None),
+        (np.random.randn(3, 2), np.random.randn(2, 2), np.random.randn(3, 2)),
+        (np.random.randn(3, 2), np.random.randn(2, 2), np.random.randn(2)),
+    ],
+    ids=["b is None", "b is not broadcasted", "b is broadcasted"],
+)
+def test_linear(x, W, b):
+    x, W = as_variables(x, W)
+    b = None if b is None else variable(b)
     gradient_check(partial(F.linear, W=W, b=b), x)
     cleargrads(x, W, b)
     gradient_check(partial(F.linear, x, b=b), W)
     cleargrads(x, W, b)
     if b:
-        gradient_check(partial(F.linear, x, W=W), b)
+        gradient_check(partial(F.linear, x, W), b)
         cleargrads(x, W, b)
+
+
+def sigmoid_simple(x):
+    return 1 / (1 + F.exp(-x))
+
+
+def test_sigmoid():
+    xdata = np.random.randn(2, 3)
+    x = variable(xdata)
+    gradient_check(F.sigmoid, x)
+    x.cleargrad()
+
+    y = F.sigmoid(x)
+    y.backward()
+    gx = x.grad
+    assert gx is not None
+    gx_data = gx.data
+    x.cleargrad()
+
+    y_s = sigmoid_simple(x)
+    y_s.backward()
+    gx_s = x.grad
+    assert gx_s is not None
+    gx_s_data = gx_s.data
+    np.testing.assert_allclose(gx_data, gx_s_data)

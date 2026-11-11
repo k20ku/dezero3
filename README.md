@@ -110,6 +110,7 @@ Implemented are
 - computation graph traversal that enables drawing
     ![goldstein-price function](./resources/goldstein_price.svg)
 - broadcasting, sum, matrix multiplication
+- Two-Layers model
 
 In implementation,
 

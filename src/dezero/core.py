@@ -293,10 +293,10 @@ class Function(ABC):
     outputs: tuple[weakref.ReferenceType[Variable], ...]
     generation: int
 
-    def __call__(self, *inputs: Variable):
+    def __call__(self, *inputs: Variable | NDArray):
         """
         Args:
-            inputs: Variables
+            inputs: Variables or NDArray or array-like
 
         Returns:
             Variable if the function returns single output, else returns tuple of Variable
@@ -304,6 +304,7 @@ class Function(ABC):
         Intentionally weakly typed because its return type depends on the runtime subclass implementation.
         Public APIs recover precise types with cast or wrapper functions.
         """
+        inputs = tuple(as_variables(*inputs))
         xs = tuple(input.data for input in inputs)
         ys = self.forward(*xs)
 

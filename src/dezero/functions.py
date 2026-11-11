@@ -159,15 +159,17 @@ def transpose(x: Variable, axes: None | tuple[int] = None) -> Variable:
     return Transpose(axes)(x)
 
 
-def sum(x: Variable, axis: None | ShapeLike = None, keepdims: bool = False) -> Variable:
+def sum(
+    x: Variable | NDArray, axis: None | ShapeLike = None, keepdims: bool = False
+) -> Variable:
     return Sum(axis, keepdims)(x)
 
 
-def broadcast_to(x: Variable, shape: Shape) -> Variable:
+def broadcast_to(x, shape: Shape) -> Variable:
     return BroadcastTo(shape)(x)
 
 
-def sum_to(x: Variable, shape: Shape) -> Variable:
+def sum_to(x, shape: Shape) -> Variable:
     """
     Sum of elements in x in the shape of given shape.
     sum function that can be designated returning shape
@@ -175,7 +177,7 @@ def sum_to(x: Variable, shape: Shape) -> Variable:
     return SumTo(shape)(x)
 
 
-def matmul(x: Variable, W: Variable) -> Variable:
+def matmul(x, W) -> Variable:
     return MatMul()(x, W)
 
 
@@ -200,7 +202,7 @@ class MeanSquaredError(Function):
         return gx0, gx1
 
 
-def mean_squared_error(x0: Variable, x1: Variable) -> Variable:
+def mean_squared_error(x0, x1) -> Variable:
     return MeanSquaredError()(x0, x1)
 
 
@@ -221,7 +223,7 @@ class Linear(Function):
         return gx, gW, gb
 
 
-def linear(x: Variable, W: Variable, b: Variable | None = None) -> Variable:
+def linear(x, W, b=None) -> Variable:
     return Linear()(x, W, b) if b else Linear()(x, W)
 
 
@@ -239,5 +241,5 @@ class Sigmoid(Function):
         return gx
 
 
-def sigmoid(x: Variable) -> Variable:
+def sigmoid(x) -> Variable:
     return Sigmoid()(x)

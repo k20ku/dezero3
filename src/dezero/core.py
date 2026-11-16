@@ -284,10 +284,12 @@ def variable(x: Any, name=None, dtype=None) -> Variable:
     return Variable(x, name, dtype)
 
 
-def as_variable(obj: Any, dtype=None) -> Variable:
+def as_variable(obj: Any, name=None, dtype=None) -> Variable:
     if isinstance(obj, Variable):
+        if name is not None and obj.name is None:
+            obj.name = name
         return obj
-    return Variable(obj, dtype=dtype)
+    return Variable(obj, name=name, dtype=dtype)
 
 
 def as_variables(*objs: Any, dtype=None) -> Generator[Variable]:

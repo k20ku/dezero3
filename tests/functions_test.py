@@ -5,8 +5,8 @@ import pytest
 
 import dezero.functions as F
 from dezero.core import Variable, as_variables, variable
+from dezero.testing import CallableV, gradient_check
 from dezero.typing import NDArray
-from dezero.util import CallableV, gradient_check
 from dezero.utils.grad import numerical_grad
 
 

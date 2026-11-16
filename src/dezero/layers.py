@@ -11,6 +11,7 @@ from dezero.typing import NDArray, ShapeLike, xp
 class Layer(ABC):
     inputs: tuple[weakref.ReferenceType[Variable], ...]
     outputs: tuple[weakref.ReferenceType[Variable], ...]
+
     def __init__(self):
         self._params: set[str] = set()
 
@@ -33,7 +34,7 @@ class Layer(ABC):
 
         return outputs if len(outputs) > 1 else outputs[0]
 
-    def forward(self, *inputs: Variable | NDArray) -> Any:...
+    def forward(self, *inputs: Variable | NDArray) -> Any: ...
 
     def params(self) -> Generator[Parameter]:
         for name in self._params:
@@ -45,21 +46,29 @@ class Layer(ABC):
 
 
 class Linear(Layer):
-    def __init__(self, out_size: int, in_size: int | None =None, nobias=False, dtype=xp.float32):
+    def __init__(
+        self, out_size: int, in_size: int | None = None, nobias=False, dtype=xp.float32
+    ):
         super().__init__()
         self.in_size = in_size
         self.out_size = out_size
         self.dtype = dtype
         self.w: Parameter | None = None
-        self.b: Parameter | None = None if nobias else Parameter(xp.zeros(out_size, dtype=dtype), name='b')
+        self.b: Parameter | None = (
+            None if nobias else Parameter(xp.zeros(out_size, dtype=dtype), name="b")
+        )
 
     def _init_W(self):
         I, O = self.in_size, self.out_size
         assert I is not None and O is not None
         W_data = xp.random.randn(I, O).astype(self.dtype) * xp.sqrt(1 / I)
-        self.w = Parameter(W_data, name='W')
+        self.w = Parameter(W_data, name="W")
 
     def forward(self, x: Variable | NDArray):
+        if x.ndim < 2:
+            raise ValueError(
+                f"x.shape = {x.shape}, x.ndim = {x.ndim}, ndim must be greater than 2."
+            )
         if self.w is None:
             in_size = x.shape[1]
             self.in_size = in_size

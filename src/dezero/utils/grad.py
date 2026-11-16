@@ -4,7 +4,6 @@ from typing import Any, TypeVar
 import numpy as np
 
 from dezero.core import NDArray, Variable, as_variable, asarray, xp
-from dezero.util import CallableV
 
 Variable_T = TypeVar("Variable_T", bound=Variable)
 
@@ -55,7 +54,7 @@ def numerical_grad(
 
     """
 
-    x: NDArray = asarray(x)
+    x: NDArray = asarray(x, dtype=np.float64)
 
     # `f` of `_numerical_grad_nd` is NDArray to NDArray func,
     # but this func's `f` is Variable to Variable (because we observe auto-grad!).
@@ -92,10 +91,10 @@ def _numerical_grad_nd(
         tmp_x = x[idx]
 
         x[idx] = tmp_x + eps  # x+e
-        y1 = f(x, *args, **kwargs)  # f(x+e)
+        y1 = f(x, *args, **kwargs).copy()  # f(x+e)
 
         x[idx] = tmp_x - eps
-        y0 = f(x, *args, **kwargs)
+        y0 = f(x, *args, **kwargs).copy()
 
         # total diffs resulted by eps diff of x[idx]
         diff = np.sum(y1 - y0)
@@ -122,16 +121,16 @@ def _numerical_grad_nd_5pstencil(
         tmp_x = x[idx]
 
         x[idx] = tmp_x + eps  # x+e
-        y4 = f(x, *args, **kwargs)  # f(x+e)
+        y4 = f(x, *args, **kwargs).copy()  # f(x+e)
 
         x[idx] = tmp_x - eps
-        y3 = f(x, *args, **kwargs)
+        y3 = f(x, *args, **kwargs).copy()
 
         x[idx] = tmp_x + 2 * eps  # x+e
-        y2 = f(x, *args, **kwargs)  # f(x+e)
+        y2 = f(x, *args, **kwargs).copy()  # f(x+e)
 
         x[idx] = tmp_x - 2 * eps
-        y1 = f(x, *args, **kwargs)
+        y1 = f(x, *args, **kwargs).copy()
 
         # total diffs resulted by eps diff of x[idx]
         diff = np.sum(8 * (y4 - y3) - (y2 - y1))
@@ -142,7 +141,9 @@ def _numerical_grad_nd_5pstencil(
     return grad
 
 
-def dn(f: CallableV, x: Variable, *args: Any, n: int = 1, **kwargs: Any) -> Variable:
+def dn(
+    f: Callable[..., Variable], x: Variable, *args: Any, n: int = 1, **kwargs: Any
+) -> Variable:
     y = f(x, *args, **kwargs)
     y.name = "y"
     if n <= 0:

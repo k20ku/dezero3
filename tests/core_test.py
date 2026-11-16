@@ -3,7 +3,7 @@ from typing import Any, Callable, cast
 import numpy as np
 import pytest
 
-from dezero.core import Variable, add, as_variable, as_variables, exp, square
+from dezero.core import Variable, add, as_variable, as_variables, exp, square, variable
 
 
 class TestSquare:
@@ -14,7 +14,7 @@ class TestSquare:
         ],
     )
     def test_forward(self, x, expected, assert_func):
-        x = Variable(x)
+        x = variable(x)
         y = square(x)
         assert_func(y.data, expected)
 
@@ -52,8 +52,7 @@ class TestAdd:
         ],
     )
     def test_backward(self, x0, x1, expected, assert_func):
-        x0 = as_variable(x0)
-        x1 = as_variable(x1)
+        x0, x1 = as_variables(x0, x1)
         y = add(x0, x1)
         y.backward()
         assert x0.grad is not None
@@ -79,14 +78,14 @@ class TestExp:
         [
             (np.array(3.0), np.exp(3.0), np.testing.assert_equal),
             (
-                np.array([[1, 3.1], [- 4, 0]]),
-                np.exp(np.array([[1, 3.1], [- 4, 0]])),
+                np.array([[1, 3.1], [-4, 0]]),
+                np.exp(np.array([[1, 3.1], [-4, 0]])),
                 np.testing.assert_equal,
             ),
         ],
     )
     def test_backward(self, x, expected, assert_func):
-        x = Variable(x)
+        x = variable(x)
         y = exp(x)
         y.backward()
         assert x.grad is not None

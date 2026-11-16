@@ -10,16 +10,17 @@ from typing import Any, SupportsIndex, overload, override
 
 import numpy as np
 
-from dezero.typing import NDArray, Shape, ShapeLike, dtype64, xp
+from dezero.typing import NDArray, Shape, ShapeLike, xp
 
 
 class Config:
     enable_backprop = True
     detect_anomaly = False
+    default_dtype = xp.float32
 
 
 # Helper
-def asarray(x: Any, dtype=dtype64) -> NDArray:
+def asarray(x: Any, dtype=None) -> NDArray:
     """
     Args:
         x: A value tranformed into NDArray. This does not create new NDArray if x is NDArray or Variable
@@ -30,7 +31,11 @@ def asarray(x: Any, dtype=dtype64) -> NDArray:
         TypeError: x's dtype is not subtype of xp.number
     """
     if isinstance(x, Variable):
-        return x.data.astype(dtype=dtype)
+        x = x.data
+    if dtype is None:
+        dtype = (
+            x.dtype if isinstance(x, (xp.ndarray, xp.generic)) else Config.default_dtype
+        )
     try:
         if not Config.detect_anomaly:
             x: NDArray = xp.asarray(x)
@@ -40,7 +45,7 @@ def asarray(x: Any, dtype=dtype64) -> NDArray:
         raise ValueError("array must not contain infs or NaNs")
     if not xp.issubdtype(x.dtype, np.number):
         raise TypeError(f"{x.dtype} is not allowed. Subclass of {np.number} allowed.")
-    return xp.astype(x, dtype)
+    return x.astype(dtype, copy=False)
 
 
 def to_str(obj) -> str:
@@ -88,7 +93,7 @@ class Variable:
     # calls not the operator overriden by the NDArray but Variable.
     __array_priority__: int = 200
 
-    def __init__(self, data: Any, name: str | None = None, dtype=dtype64):
+    def __init__(self, data: Any, name: str | None = None, dtype=None):
         self.data: NDArray = asarray(data, dtype=dtype)
         self.grad: Variable | None = None
         self.creator: "Function | None" = None
@@ -275,8 +280,26 @@ class Variable:
         return F.sum(self, axis, keepdims)
 
 
-def variable(x: Any, name=None) -> Variable:
-    return Variable(x, name)
+def variable(x: Any, name=None, dtype=None) -> Variable:
+    return Variable(x, name, dtype)
+
+
+def as_variable(obj: Any, dtype=None) -> Variable:
+    if isinstance(obj, Variable):
+        return obj
+    return Variable(obj, dtype=dtype)
+
+
+def as_variables(*objs: Any, dtype=None) -> Generator[Variable]:
+    """
+    Cautious:
+        Be careful when passing a `Generator` around using `*args`;
+        since `Generator` is single-use,
+        they get consumed, which can lead to unintended bugs.
+        Get generators consumed by `tuple(generator)` to use with `*args`.
+    """
+    for obj in objs:
+        yield as_variable(obj, dtype=dtype)
 
 
 # Abstract Function
@@ -310,6 +333,7 @@ class Function(ABC):
 
         if not isinstance(ys, tuple):
             ys = (ys,)
+
         outputs: tuple[Variable, ...] = tuple(as_variables(*ys))
 
         # processes for backprop
@@ -342,24 +366,6 @@ class Function(ABC):
     """
 
     def backward(self, gy) -> Any: ...
-
-
-def as_variable(obj: Any) -> Variable:
-    if isinstance(obj, Variable):
-        return obj
-    return Variable(obj)
-
-
-def as_variables(*objs: Any) -> Generator[Variable]:
-    """
-    Cautious:
-        Be careful when passing a `Generator` around using `*args`;
-        since `Generator` is single-use,
-        they get consumed, which can lead to unintended bugs.
-        Get generators consumed by `tuple(generator)` to use with `*args`.
-    """
-    for obj in objs:
-        yield as_variable(obj)
 
 
 # Concrete Functions

@@ -61,7 +61,9 @@ class Linear(Layer):
     def _init_W(self):
         I, O = self.in_size, self.out_size
         assert I is not None and O is not None
-        W_data = xp.random.randn(I, O).astype(self.dtype) * xp.sqrt(1 / I)
+        # https://cseweb.ucsd.edu/classes/wi08/cse253/Handouts/lecun-98b.pdf
+        weight = xp.sqrt(1 / I, dtype=self.dtype) # assign dtype=self.dtype since np.sqrt returns default np.float64
+        W_data = weight * xp.random.randn(I, O).astype(self.dtype)
         self.w = Parameter(W_data, name="W")
 
     def forward(self, x: Variable | NDArray):

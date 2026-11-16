@@ -69,24 +69,26 @@ def create_graph(output: Variable, verbose=True, vcolor=_vcolor, fcolor=_fcolor)
     return dot
 
 
-def _dir(dir: os.PathLike | str | None, home: bool):
-    if home and dir is None:
-        return Path.home() / "dezero" / "cmp_graph"
-    if home and dir is not None:
-        return Path.home() / dir
-    if not home and dir is None:
-        return Path(tempfile.gettempdir()) / "dezero" / "cmp_graph"
-    return dir
-
-
-def save_cmp_graph(
+def save_gv(
     x: Variable,
-    fname: os.PathLike | str | None,
-    dir: os.PathLike | str | None = None,
-    home=False,
+    dir: os.PathLike | str,
+    fname: os.PathLike | str,
     verbose=True,
     vcolor=_vcolor,
     fcolor=_fcolor,
-):
+) -> Path:
     dot = create_graph(x, verbose=verbose, fcolor=fcolor, vcolor=vcolor)
-    dot.save(filename=f"{fname}.gv", directory=_dir(dir, home))
+    filename = f"{fname}.gv"
+    return Path(dot.save(filename=filename, directory=dir))
+
+def save_svg(
+    x: Variable,
+    dir: os.PathLike | str,
+    fname: os.PathLike | str,
+    verbose=True,
+    vcolor=_vcolor,
+    fcolor=_fcolor,
+) -> Path:
+    dot = create_graph(x, verbose=verbose, fcolor=fcolor, vcolor=vcolor)
+    path = dot.render(filename=fname, directory=dir, format='svg')
+    return Path(path)

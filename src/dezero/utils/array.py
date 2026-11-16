@@ -28,6 +28,7 @@ def sum_to(x: NDArray | Variable, shape: Shape) -> NDArray | Variable:
 
     if isinstance(x, Variable):
         return as_variable(y)
+    
     return y
 
 

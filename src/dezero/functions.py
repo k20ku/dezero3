@@ -193,7 +193,7 @@ class MeanSquaredError(Function):
         diff = x0 - x1
         gy = broadcast_to(gy, diff.shape)
         N = len(diff) if diff.ndim > 0 else 1
-        gx0 = gy * diff * (2.0 / N)
+        gx0 = gy * diff * (2 / N)
         gx1 = -gx0
         if x0.shape != x1.shape:
             gx0 = sum_to(gx0, x0.shape)

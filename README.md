@@ -111,6 +111,7 @@ Implemented are
     ![goldstein-price function](./resources/goldstein_price.svg)
 - broadcasting, sum, matrix multiplication
 - Two-Layers model
+- Default `dtype` to `float32`
 
 In implementation,
 

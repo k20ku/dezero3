@@ -88,8 +88,8 @@ class Variable:
     # calls not the operator overriden by the NDArray but Variable.
     __array_priority__: int = 200
 
-    def __init__(self, data: Any, name: str | None = None):
-        self.data: NDArray = asarray(data)
+    def __init__(self, data: Any, name: str | None = None, dtype=dtype64):
+        self.data: NDArray = asarray(data, dtype=dtype)
         self.grad: Variable | None = None
         self.creator: "Function | None" = None
         self.generation: int = 0

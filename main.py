@@ -1,7 +1,10 @@
+from functools import partial
 from pathlib import Path
 
 from dezero.core import variable
-from dezero.utils.graph import graph
+from dezero.utils.grad import dn
+from dezero.utils.graph import save_svg
+from dezero.views import DARK, with_attrs
 
 
 def goldstein_price(x1, x2):
@@ -14,25 +17,34 @@ def goldstein_price(x1, x2):
     )
 
 
-def main():
-    x = variable(1)
-    y = variable(1)
-    z = goldstein_price(x, y)
-    z.backward()
+x = variable(1)
+y = variable(1)
+z = goldstein_price(x, y)
 
-    x.name = "x"
-    y.name = "y"
-    z.name = "z"
+x.name = "x"
+y.name = "y"
+z.name = "z"
 
-    dot = graph(output=z, verbose=False)
-    name = "goldstein_price"
-    dir = Path.home() / "dezero" / "cmp_graph"
-    # dir = "resources"
-    dot.save(filename=f"{name}.gv", directory=dir)
-    dot.render(
-        filename=f"{name}", directory=dir, view=False, cleanup=False, format="svg"
-    )
+name = "goldstein_price"
+dir = Path.home() / "Downloads"
+file_to = dir / f"{name}.svg"
+path = save_svg(
+    z,
+    file_to,
+    view=True,
+    verbose=True,
+    **with_attrs(theme=DARK, graph_attr={"rankdir": "LR"}),
+)
+print(path)
 
-
-if __name__ == "__main__":
-    main()
+n = 1
+gx = dn(partial(goldstein_price, x2=y), x, n=n)
+file_to = dir / f"{name}_diff{n}"
+path = save_svg(
+    gx,
+    file_to,
+    view=True,
+    verbose=True,
+    **with_attrs(theme=DARK, graph_attr={"rankdir": "LR"}),
+)
+print(path)

@@ -109,7 +109,7 @@ class Variable:
         # Complexity should exist somewhere. Choose where.
         # Hence, choose here.
         if self.grad is None:
-            self.grad = as_variable(xp.ones_like(self.data))
+            self.grad = as_variable(xp.ones_like(self.data, dtype=Config.default_dtype))
         # graph contains only one Variable node
         # creator
         if self.creator is None:

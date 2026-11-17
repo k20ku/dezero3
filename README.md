@@ -112,6 +112,7 @@ Implemented are
 - broadcasting, sum, matrix multiplication
 - Two-Layers model
 - Default `dtype` to `float32`
+    ![two-layer net](./resources/two-layers.svg)
 
 In implementation,
 

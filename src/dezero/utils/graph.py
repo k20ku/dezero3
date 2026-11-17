@@ -2,14 +2,15 @@ import heapq
 import os
 import tempfile
 import typing
-from pathlib import Path
+from functools import partial
+from pathlib import Path, PurePath
 
 import graphviz
 
 from dezero.core import Function, Variable
 
-_vcolor = "orange"
-_fcolor = "lightblue"
+Vcolor = "orange"
+Fcolor = "lightblue"
 
 
 def add_var(
@@ -40,7 +41,7 @@ def add_func(dot: graphviz.Digraph, f: Function, fcolor: str):
         dot.edge(str(id(f)), str(id(y())))
 
 
-def create_graph(output: Variable, verbose=True, vcolor=_vcolor, fcolor=_fcolor):
+def create_graph(output: Variable, verbose=True, vcolor=Vcolor, fcolor=Fcolor):
     dot = graphviz.Digraph()
     add_var(dot, output, vcolor=vcolor, verbose=verbose)
 
@@ -74,21 +75,60 @@ def save_gv(
     dir: os.PathLike | str,
     fname: os.PathLike | str,
     verbose=True,
-    vcolor=_vcolor,
-    fcolor=_fcolor,
+    vcolor=Vcolor,
+    fcolor=Fcolor,
 ) -> Path:
     dot = create_graph(x, verbose=verbose, fcolor=fcolor, vcolor=vcolor)
     filename = f"{fname}.gv"
     return Path(dot.save(filename=filename, directory=dir))
 
+def render(
+    x: Variable,
+    dir: os.PathLike | str,
+    fname: os.PathLike | str,
+    format: str | None,
+    cleanup=True,
+    verbose=True,
+    vcolor=Vcolor,
+    fcolor=Fcolor,
+) -> Path:
+    """
+    Example:
+        >>> import numpy as np
+        >>> import dezero
+        >>> x = dezero.Variable(np.random.randn(2,3), dtype=np.float32, name='x')
+        >>> y = (x + 1) ** 2
+        >>> from pathlib import Path
+        >>> render(y, Path.home(), "quad", "svg", cleanup=True)
+        PosixPath('home/[user]/quad.svg')
+        >>> render(y, Path.home()/"Downloads", "quad.svg")
+        PosixPath('home/[user]/Downloads/quad.svg')
+    """
+    dot = create_graph(x, verbose=verbose, fcolor=fcolor, vcolor=vcolor)
+    dir = Path(dir)
+    fname = PurePath(fname)
+    dir.mkdir(parents=True, exist_ok=True)
+
+    dot.directory = dir.__str__()
+    dot.filename = fname.with_suffix(".gv").__str__()
+
+    if format is None:
+        outfile = dir / fname
+    else:
+        outfile = dir / fname.with_suffix(f".{format}")
+    path = dot.render(outfile=outfile, cleanup=cleanup, format=format)
+    return Path(path)
+
+save_image = render
+
 def save_svg(
     x: Variable,
     dir: os.PathLike | str,
     fname: os.PathLike | str,
+    cleanup=True,
     verbose=True,
-    vcolor=_vcolor,
-    fcolor=_fcolor,
+    vcolor=Vcolor,
+    fcolor=Fcolor,
 ) -> Path:
-    dot = create_graph(x, verbose=verbose, fcolor=fcolor, vcolor=vcolor)
-    path = dot.render(filename=fname, directory=dir, format='svg')
-    return Path(path)
+    path = render(x, dir, fname, "svg")
+    return path

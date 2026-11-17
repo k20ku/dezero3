@@ -206,3 +206,38 @@ def test_sigmoid():
     assert gx_s is not None
     gx_s_data = gx_s.data
     np.testing.assert_allclose(gx_data, gx_s_data)
+
+
+@pytest.mark.parametrize(
+    argnames=("data", "slices"),
+    argvalues=[
+        (np.random.randn(2, 3), 1),
+        (np.random.randn(2, 2), np.array([0, 0, 1])),
+        (np.random.randn(3, 3, 3), slice(2)),
+        (np.random.randn(3, 5, 3), (1, slice(None), slice(None, 2))),
+    ],
+    ids=["[1]", "[[0], [0], [1]]", "[:2]", "[1, :, :2]"],
+)
+def test_get_item(data, slices):
+    x = variable(data)
+    gradient_check(F.get_item, x, slices)
+
+
+def get_item_grad(gy, slices, in_shape) -> Variable:
+    return F.GetItemGrad(slices, in_shape)(gy)
+
+
+@pytest.mark.parametrize(
+    argnames=("gy", "slices", "in_shape"),
+    argvalues=[
+        (
+            np.arange(2 * 2, dtype=np.float64).reshape(2, 2),
+            (slice(1, 3), slice(None, 2)),
+            (5, 2),
+        ),
+        (np.random.randn(2, 1), (1, slice(None), slice(1, 3, 2)), (3, 2, 4)),
+    ],
+    ids=["(5, 2)[1:3, 0:2] -> (2, 2)", "(3, 2, 4)[1, :, 1:3:2]"],
+)
+def test_get_item_grad(gy, slices, in_shape):
+    gradient_check(get_item_grad, gy, slices, in_shape)

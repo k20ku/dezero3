@@ -1,8 +1,6 @@
-from typing import overload
-
 import dezero.core as dc
 import dezero.utils.array as darray
-from dezero.core import Function, Variable
+from dezero.core import Config, Function, Variable
 from dezero.typing import NDArray, Shape, ShapeLike, xp
 
 Exp = dc.Exp
@@ -243,3 +241,35 @@ class Sigmoid(Function):
 
 def sigmoid(x) -> Variable:
     return Sigmoid()(x)
+
+
+class GetItem(Function):
+    def __init__(self, slices):
+        self.slices = slices
+
+    def forward(self, x: NDArray):
+        y = x[self.slices]
+        return y
+
+    def backward(self, gy):
+        (x,) = self.inputs
+        get_item_grad = GetItemGrad(self.slices, x.shape)
+        return get_item_grad(gy)
+
+
+def get_item(x, slices) -> Variable:
+    return GetItem(slices)(x)
+
+
+class GetItemGrad(Function):
+    def __init__(self, slices, in_shape: Shape):
+        self.slices = slices
+        self.in_shape = in_shape
+
+    def forward(self, gy):
+        gx = xp.zeros(self.in_shape, dtype=Config.default_dtype)
+        xp.add.at(gx, self.slices, gy)
+        return gx
+
+    def backward(self, ggx):
+        return get_item(ggx, self.slices)

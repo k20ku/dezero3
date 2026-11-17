@@ -113,6 +113,7 @@ Implemented are
 - Two-Layers model
 - Default `dtype` to `float32`
     ![two-layer net](./resources/two-layers.svg)
+- `Variable`'s `__getitem__` override. `x = Variable(np.random.randn(10).astype(np.float32)); x[-1]`
 
 In implementation,
 

@@ -245,6 +245,11 @@ class Variable:
     def __pow__(self, c: Any):
         return pow(self, c)
 
+    def __getitem__(self, slices):
+        from dezero.functions import get_item
+
+        return get_item(self, slices)
+
     @overload
     def reshape(self, shape: ShapeLike | None, /) -> Variable: ...
     @overload
